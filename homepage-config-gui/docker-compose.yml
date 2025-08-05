@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  homepage-config-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: homepage-config-gui:latest
+    container_name: homepage-config-gui
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage-config-gui.rule=Host(`config.yourdomain.com`)"
+      - "traefik.http.routers.homepage-config-gui.tls=true"
+      - "traefik.http.routers.homepage-config-gui.tls.certresolver=letsencrypt"
+      - "traefik.http.services.homepage-config-gui.loadbalancer.server.port=80"
+    networks:
+      - homepage-net
+
+networks:
+  homepage-net:
+    external: true

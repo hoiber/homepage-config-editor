@@ -7,6 +7,7 @@ const HomepageConfigGUI = () => {
   const [importSuccess, setImportSuccess] = useState('');
   
   const commonServices = {
+    // Media Servers & Streaming
     plex: {
       name: 'Plex',
       href: 'http://localhost:32400',
@@ -175,13 +176,6 @@ const HomepageConfigGUI = () => {
       icon: 'pi-hole',
       widget: { type: 'pihole', url: 'http://localhost:80', key: 'your-api-key' }
     },
-    vaultwarden: {
-      name: 'Vaultwarden',
-      href: 'http://localhost:80',
-      description: 'Password manager',
-      icon: 'bitwarden',
-      widget: { type: 'vaultwarden', url: 'http://localhost:80', key: '' }
-    },
     emby: {
       name: 'Emby',
       href: 'http://localhost:8096',
@@ -292,13 +286,6 @@ const HomepageConfigGUI = () => {
       href: 'http://localhost:8000',
       description: 'Docker web UI',
       icon: 'yacht',
-      widget: null
-    },
-    watchtower: {
-      name: 'Watchtower',
-      href: 'http://localhost:8080',
-      description: 'Auto-update containers',
-      icon: 'watchtower',
       widget: null
     },
     prometheus: {
@@ -462,13 +449,6 @@ const HomepageConfigGUI = () => {
       icon: 'trilium',
       widget: null
     },
-    linkwarden: {
-      name: 'LinkWarden',
-      href: 'http://localhost:3000',
-      description: 'Bookmark manager',
-      icon: 'linkwarden',
-      widget: null
-    },
     wallabag: {
       name: 'Wallabag',
       href: 'http://localhost:8080',
@@ -574,13 +554,6 @@ const HomepageConfigGUI = () => {
       icon: 'zabbix',
       widget: { type: 'zabbix', url: 'http://localhost:8080', key: 'your-token' }
     },
-    esphome: {
-      name: 'ESPHome',
-      href: 'http://localhost:6052',
-      description: 'ESP device management',
-      icon: 'esphome',
-      widget: { type: 'esphome', url: 'http://localhost:6052', key: '' }
-    },
     nodered: {
       name: 'Node-RED',
       href: 'http://localhost:1880',
@@ -650,6 +623,325 @@ const HomepageConfigGUI = () => {
       description: 'Game server management',
       icon: 'pterodactyl',
       widget: { type: 'pterodactyl', url: 'http://localhost:80', key: 'your-api-key' }
+    },
+    // Additional Media & Content Management
+    audiobookshelf: {
+      name: 'AudioBookshelf',
+      href: 'http://localhost:13378',
+      description: 'Audiobook and podcast server',
+      icon: 'audiobookshelf',
+      widget: { type: 'audiobookshelf', url: 'http://localhost:13378', key: 'your-api-key' }
+    },
+    kavita: {
+      name: 'Kavita',
+      href: 'http://localhost:5000',
+      description: 'Digital library for comics/manga',
+      icon: 'kavita',
+      widget: { type: 'kavita', url: 'http://localhost:5000', key: 'your-api-key' }
+    },
+    komga: {
+      name: 'Komga',
+      href: 'http://localhost:25600',
+      description: 'Media server for comics/mangas/BDs',
+      icon: 'komga',
+      widget: { type: 'komga', url: 'http://localhost:25600', key: 'your-api-key' }
+    },
+    tubearchivist: {
+      name: 'TubeArchivist',
+      href: 'http://localhost:8000',
+      description: 'YouTube archival made simple',
+      icon: 'tubearchivist',
+      widget: { type: 'tubearchivist', url: 'http://localhost:8000', key: 'your-api-key' }
+    },
+    // Request Management
+    jellyseerr: {
+      name: 'Jellyseerr',
+      href: 'http://localhost:5055',
+      description: 'Media request management for Jellyfin',
+      icon: 'jellyseerr',
+      widget: { type: 'jellyseerr', url: 'http://localhost:5055', key: 'your-api-key' }
+    },
+    // Additional Download Clients
+    rutorrent: {
+      name: 'ruTorrent',
+      href: 'http://localhost:8080',
+      description: 'Web interface for rTorrent',
+      icon: 'rutorrent',
+      widget: { type: 'rutorrent', url: 'http://localhost:8080', key: '' }
+    },
+    flood: {
+      name: 'Flood',
+      href: 'http://localhost:3000',
+      description: 'Modern web UI for rTorrent',
+      icon: 'flood',
+      widget: { type: 'flood', url: 'http://localhost:3000', key: '' }
+    },
+    jdownloader: {
+      name: 'JDownloader',
+      href: 'http://localhost:5800',
+      description: 'Download management tool',
+      icon: 'jdownloader',
+      widget: { type: 'jdownloader', url: 'http://localhost:5800', key: '' }
+    },
+    pyload: {
+      name: 'pyLoad',
+      href: 'http://localhost:8000',
+      description: 'Free and open source download manager',
+      icon: 'pyload',
+      widget: { type: 'pyload', url: 'http://localhost:8000', key: 'your-api-key' }
+    },
+    // System Monitoring & Management
+    glances: {
+      name: 'Glances',
+      href: 'http://localhost:61208',
+      description: 'System monitoring tool',
+      icon: 'glances',
+      widget: { type: 'glances', url: 'http://localhost:61208', key: '' }
+    },
+    scrutiny: {
+      name: 'Scrutiny',
+      href: 'http://localhost:8080',
+      description: 'Hard drive health dashboard',
+      icon: 'scrutiny',
+      widget: { type: 'scrutiny', url: 'http://localhost:8080', key: '' }
+    },
+    healthchecks: {
+      name: 'Healthchecks.io',
+      href: 'http://localhost:8000',
+      description: 'Cron job monitoring',
+      icon: 'healthchecks',
+      widget: { type: 'healthchecks', url: 'http://localhost:8000', key: 'your-api-key' }
+    },
+    watchtower: {
+      name: 'Watchtower',
+      href: 'http://localhost:8080',
+      description: 'Auto-update containers',
+      icon: 'watchtower',
+      widget: { type: 'watchtower', url: 'http://localhost:8080', key: '' }
+    },
+    gatus: {
+      name: 'Gatus',
+      href: 'http://localhost:8080',
+      description: 'Automated service health dashboard',
+      icon: 'gatus',
+      widget: { type: 'gatus', url: 'http://localhost:8080', key: '' }
+    },
+    // Networking & VPN
+    cloudflared: {
+      name: 'Cloudflared',
+      href: 'http://localhost:8080',
+      description: 'Cloudflare tunnel',
+      icon: 'cloudflared',
+      widget: { type: 'cloudflared', url: 'http://localhost:8080', key: 'your-account-id' }
+    },
+    tailscale: {
+      name: 'Tailscale',
+      href: 'http://localhost:8080',
+      description: 'VPN service',
+      icon: 'tailscale',
+      widget: { type: 'tailscale', url: 'http://localhost:8080', key: 'your-api-key' }
+    },
+    headscale: {
+      name: 'Headscale',
+      href: 'http://localhost:8080',
+      description: 'Self-hosted Tailscale control server',
+      icon: 'headscale',
+      widget: { type: 'headscale', url: 'http://localhost:8080', key: 'your-api-key' }
+    },
+    gluetun: {
+      name: 'Gluetun',
+      href: 'http://localhost:8080',
+      description: 'VPN client in a thin Docker container',
+      icon: 'gluetun',
+      widget: { type: 'gluetun', url: 'http://localhost:8080', key: '' }
+    },
+    // Additional Monitoring Tools
+    beszel: {
+      name: 'Beszel',
+      href: 'http://localhost:8090',
+      description: 'Lightweight server monitoring',
+      icon: 'beszel',
+      widget: { type: 'beszel', url: 'http://localhost:8090', key: 'your-api-key' }
+    },
+    checkmk: {
+      name: 'Checkmk',
+      href: 'http://localhost:5000',
+      description: 'IT infrastructure monitoring',
+      icon: 'checkmk',
+      widget: { type: 'checkmk', url: 'http://localhost:5000', key: 'your-api-key' }
+    },
+    // Home Automation Extensions
+    esphome: {
+      name: 'ESPHome',
+      href: 'http://localhost:6052',
+      description: 'ESP device management',
+      icon: 'esphome',
+      widget: { type: 'esphome', url: 'http://localhost:6052', key: '' }
+    },
+    homebridge: {
+      name: 'Homebridge',
+      href: 'http://localhost:8581',
+      description: 'HomeKit bridge',
+      icon: 'homebridge',
+      widget: { type: 'homebridge', url: 'http://localhost:8581', key: 'your-api-key' }
+    },
+    evcc: {
+      name: 'EVCC',
+      href: 'http://localhost:7070',
+      description: 'EV charging controller',
+      icon: 'evcc',
+      widget: { type: 'evcc', url: 'http://localhost:7070', key: '' }
+    },
+    // Development & Version Control
+    gitlab: {
+      name: 'GitLab',
+      href: 'http://localhost:80',
+      description: 'DevOps platform',
+      icon: 'gitlab',
+      widget: { type: 'gitlab', url: 'http://localhost:80', key: 'your-api-key' }
+    },
+    // Communication & Notifications
+    gotify: {
+      name: 'Gotify',
+      href: 'http://localhost:80',
+      description: 'Self-hosted push notifications',
+      icon: 'gotify',
+      widget: { type: 'gotify', url: 'http://localhost:80', key: 'your-api-key' }
+    },
+    mastodon: {
+      name: 'Mastodon',
+      href: 'http://localhost:3000',
+      description: 'Decentralized social network',
+      icon: 'mastodon',
+      widget: { type: 'mastodon', url: 'http://localhost:3000', key: 'your-api-key' }
+    },
+    // Additional Storage & Backup
+    kopia: {
+      name: 'Kopia',
+      href: 'http://localhost:51515',
+      description: 'Cross-platform backup tool',
+      icon: 'kopia',
+      widget: { type: 'kopia', url: 'http://localhost:51515', key: '' }
+    },
+    urbackup: {
+      name: 'UrBackup',
+      href: 'http://localhost:55414',
+      description: 'Client/server backup system',
+      icon: 'urbackup',
+      widget: { type: 'urbackup', url: 'http://localhost:55414', key: '' }
+    },
+    // Additional Web Apps
+    linkwarden: {
+      name: 'LinkWarden',
+      href: 'http://localhost:3000',
+      description: 'Bookmark manager',
+      icon: 'linkwarden',
+      widget: { type: 'linkwarden', url: 'http://localhost:3000', key: 'your-api-key' }
+    },
+    miniflux: {
+      name: 'Miniflux',
+      href: 'http://localhost:8080',
+      description: 'Minimalist RSS reader',
+      icon: 'miniflux',
+      widget: { type: 'miniflux', url: 'http://localhost:8080', key: 'your-api-key' }
+    },
+    freshrss: {
+      name: 'FreshRSS',
+      href: 'http://localhost:8080',
+      description: 'RSS aggregator',
+      icon: 'freshrss',
+      widget: { type: 'freshrss', url: 'http://localhost:8080', key: 'your-api-key' }
+    },
+    // Finance & Personal Management
+    firefly: {
+      name: 'Firefly III',
+      href: 'http://localhost:8080',
+      description: 'Personal finance manager',
+      icon: 'firefly',
+      widget: { type: 'firefly', url: 'http://localhost:8080', key: 'your-api-key' }
+    },
+    ghostfolio: {
+      name: 'Ghostfolio',
+      href: 'http://localhost:3333',
+      description: 'Portfolio tracker',
+      icon: 'ghostfolio',
+      widget: { type: 'ghostfolio', url: 'http://localhost:3333', key: 'your-api-key' }
+    },
+    // Additional Security
+    crowdsec: {
+      name: 'CrowdSec',
+      href: 'http://localhost:8080',
+      description: 'Collaborative security',
+      icon: 'crowdsec',
+      widget: { type: 'crowdsec', url: 'http://localhost:8080', key: 'your-api-key' }
+    },
+    // Task & Project Management
+    vikunja: {
+      name: 'Vikunja',
+      href: 'http://localhost:3456',
+      description: 'To-do app & project management',
+      icon: 'vikunja',
+      widget: { type: 'vikunja', url: 'http://localhost:3456', key: 'your-api-key' }
+    },
+    // Media Processing
+    tdarr: {
+      name: 'Tdarr',
+      href: 'http://localhost:8265',
+      description: 'Audio/video library transcoding',
+      icon: 'tdarr',
+      widget: { type: 'tdarr', url: 'http://localhost:8265', key: '' }
+    },
+    unmanic: {
+      name: 'Unmanic',
+      href: 'http://localhost:8888',
+      description: 'Library optimizer',
+      icon: 'unmanic',
+      widget: { type: 'unmanic', url: 'http://localhost:8888', key: '' }
+    },
+    fileflows: {
+      name: 'FileFlows',
+      href: 'http://localhost:5000',
+      description: 'File processing automation',
+      icon: 'fileflows',
+      widget: { type: 'fileflows', url: 'http://localhost:5000', key: '' }
+    },
+    // Additional NAS & Storage
+    diskstation: {
+      name: 'Synology DiskStation',
+      href: 'http://localhost:5000',
+      description: 'Synology NAS management',
+      icon: 'diskstation',
+      widget: { type: 'diskstation', url: 'http://localhost:5000', key: 'your-api-key' }
+    },
+    qnap: {
+      name: 'QNAP',
+      href: 'http://localhost:8080',
+      description: 'QNAP NAS management',
+      icon: 'qnap',
+      widget: { type: 'qnap', url: 'http://localhost:8080', key: 'your-api-key' }
+    },
+    // Password & Identity Management
+    vaultwarden: {
+      name: 'Vaultwarden',
+      href: 'http://localhost:80',
+      description: 'Password manager',
+      icon: 'bitwarden',
+      widget: { type: 'vaultwarden', url: 'http://localhost:80', key: '' }
+    },
+    // 3D Printing
+    moonraker: {
+      name: 'Moonraker',
+      href: 'http://localhost:7125',
+      description: 'Klipper API server',
+      icon: 'moonraker',
+      widget: { type: 'moonraker', url: 'http://localhost:7125', key: '' }
+    },
+    octoprint: {
+      name: 'OctoPrint',
+      href: 'http://localhost:5000',
+      description: '3D printer web interface',
+      icon: 'octoprint',
+      widget: { type: 'octoprint', url: 'http://localhost:5000', key: 'your-api-key' }
     }
   };
 
@@ -1016,13 +1308,64 @@ const HomepageConfigGUI = () => {
   };
 
   const commonWidgetTypes = [
-    'adguard', 'authentik', 'autobrr', 'bazarr', 'bookstack', 'calibre-web',
-    'changedetection', 'cloudflare-tunnels', 'deluge', 'docker', 'emby',
-    'esphome', 'gitea', 'github', 'grafana', 'homeassistant', 'jellyfin',
-    'jenkins', 'lidarr', 'mastodon', 'minecraft', 'nextcloud', 'nginx',
-    'ombi', 'overseerr', 'plex', 'portainer', 'prowlarr', 'qbittorrent',
-    'radarr', 'readarr', 'sabnzbd', 'sonarr', 'tautulli', 'traefik',
-    'transmission', 'truenas', 'unifi', 'uptime-kuma', 'vaultwarden'
+    // Core Media & Arr Stack
+    'plex', 'jellyfin', 'emby', 'tautulli', 'sonarr', 'radarr', 'lidarr', 'readarr', 
+    'prowlarr', 'bazarr', 'overseerr', 'jellyseerr', 'ombi',
+    
+    // Download Clients
+    'qbittorrent', 'transmission', 'deluge', 'sabnzbd', 'nzbget', 'rutorrent', 
+    'flood', 'jdownloader', 'pyload',
+    
+    // System & Infrastructure
+    'portainer', 'traefik', 'nginx', 'docker', 'watchtower', 'yacht',
+    
+    // Monitoring & Health
+    'uptime-kuma', 'uptimerobot', 'grafana', 'prometheus', 'netdata', 'glances',
+    'scrutiny', 'healthchecks', 'gatus', 'beszel', 'checkmk',
+    
+    // Networking & Security
+    'adguard', 'pihole', 'cloudflared', 'tailscale', 'headscale', 'gluetun',
+    'unifi', 'opnsense', 'pfsense', 'authentik', 'vaultwarden', 'crowdsec',
+    
+    // Home Automation
+    'homeassistant', 'esphome', 'homebridge', 'nodered', 'zigbee2mqtt', 'evcc',
+    
+    // Media Processing & Management
+    'tdarr', 'unmanic', 'fileflows', 'audiobookshelf', 'kavita', 'komga', 
+    'tubearchivist', 'calibre-web', 'photoprism', 'immich',
+    
+    // Storage & NAS
+    'truenas', 'freenas', 'openmediavault', 'diskstation', 'qnap', 'nextcloud',
+    'filebrowser', 'syncthing', 'duplicati', 'kopia', 'urbackup',
+    
+    // Development & Git
+    'gitea', 'gitlab', 'github', 'jenkins', 'portainer',
+    
+    // Communication & Social
+    'gotify', 'mastodon', 'mattermost', 'rocketchat', 'matrix', 'element',
+    
+    // Finance & Personal
+    'firefly', 'ghostfolio', 'grocy', 'paperlessngx', 'mealie', 'tandoor',
+    'vikunja', 'linkwarden', 'wallabag', 'shiori',
+    
+    // RSS & Reading
+    'miniflux', 'freshrss', 'bookstack', 'outline', 'wikijs', 'trilium',
+    
+    // 3D Printing & IoT
+    'moonraker', 'octoprint', 'frigate', 'motioneye',
+    
+    // Gaming & Entertainment
+    'minecraft', 'pterodactyl', 'steam',
+    
+    // Mail & Web Services
+    'mailcow', 'roundcube', 'changedetection', 'upsnap', 'speedtest',
+    
+    // Databases
+    'postgres', 'mysql', 'redis', 'mongodb', 'influxdb',
+    
+    // Additional Services
+    'autobrr', 'jackett', 'flaresolverr', 'code-server', 'smokeping', 'ntopng',
+    'zabbix', 'joplin', 'custom'
   ];
 
   return (
@@ -1185,9 +1528,11 @@ const HomepageConfigGUI = () => {
                         className="bg-slate-600 text-white text-xs px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
                       >
                         <option value="">Quick add...</option>
-                        {Object.entries(commonServices).map(([key, service]) => (
-                          <option key={key} value={key}>{service.name}</option>
-                        ))}
+                        {Object.entries(commonServices)
+                          .sort(([,a], [,b]) => a.name.localeCompare(b.name))
+                          .map(([key, service]) => (
+                            <option key={key} value={key}>{service.name}</option>
+                          ))}
                       </select>
                       <button
                         onClick={() => quickAddService(group.id)}
@@ -1324,9 +1669,11 @@ const HomepageConfigGUI = () => {
                             className="bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
                           >
                             <option value="">No widget</option>
-                            {commonWidgetTypes.map(type => (
-                              <option key={type} value={type}>{type}</option>
-                            ))}
+                            {commonWidgetTypes
+                              .sort((a, b) => a.localeCompare(b))
+                              .map(type => (
+                                <option key={type} value={type}>{type}</option>
+                              ))}
                           </select>
                           {service.widget && (
                             <>
@@ -1416,31 +1763,33 @@ const HomepageConfigGUI = () => {
 
             {/* Quick Add Services */}
             <div className="bg-purple-900/20 rounded-lg p-4 border border-purple-800">
-              <h3 className="font-semibold text-purple-300 mb-2">Quick Add Services (70+ Available!)</h3>
+              <h3 className="font-semibold text-purple-300 mb-2">Quick Add Services (120+ Available!)</h3>
               <div className="text-sm text-purple-200 space-y-1">
-                <div><strong>Media Servers:</strong> Plex, Jellyfin, Emby</div>
+                <div><strong>Media Servers:</strong> Plex, Jellyfin, Emby, AudioBookshelf</div>
                 <div><strong>*Arr Stack:</strong> Sonarr, Radarr, Lidarr, Readarr, Prowlarr, Bazarr</div>
-                <div><strong>Downloads:</strong> qBittorrent, Transmission, Deluge, SABnzbd, NZBGet</div>
-                <div><strong>Indexers:</strong> Jackett, FlareSolverr</div>
-                <div><strong>Request Management:</strong> Overseerr, Ombi</div>
-                <div><strong>Books:</strong> Calibre, Calibre-Web, Readarr</div>
-                <div><strong>Photos:</strong> PhotoPrism, Immich</div>
-                <div><strong>Files & Backup:</strong> File Browser, Duplicati, Syncthing</div>
-                <div><strong>Infrastructure:</strong> Portainer, Traefik, Nginx PM, Docker, Yacht</div>
-                <div><strong>Monitoring:</strong> Grafana, Uptime Kuma, Prometheus, Netdata, Zabbix</div>
-                <div><strong>Networking:</strong> UniFi, OPNsense, pfSense, WireGuard, Pi-hole, AdGuard</div>
-                <div><strong>Storage:</strong> TrueNAS, FreeNAS, OpenMediaVault</div>
-                <div><strong>Databases:</strong> PostgreSQL, MySQL, phpMyAdmin, pgAdmin, Redis, MongoDB</div>
-                <div><strong>Wikis & Notes:</strong> BookStack, Outline, Wiki.js, Joplin, Trilium</div>
+                <div><strong>Downloads:</strong> qBittorrent, Transmission, Deluge, SABnzbd, NZBGet, ruTorrent, Flood, JDownloader, pyLoad</div>
+                <div><strong>Request Management:</strong> Overseerr, Jellyseerr, Ombi</div>
+                <div><strong>Media Management:</strong> Kavita, Komga, TubeArchivist, Calibre-Web</div>
+                <div><strong>Photos & Images:</strong> PhotoPrism, Immich</div>
+                <div><strong>Files & Backup:</strong> File Browser, Duplicati, Syncthing, Kopia, UrBackup</div>
+                <div><strong>Infrastructure:</strong> Portainer, Traefik, Nginx PM, Docker, Yacht, Watchtower</div>
+                <div><strong>Monitoring:</strong> Grafana, Uptime Kuma, Prometheus, Netdata, Zabbix, Glances, Scrutiny, Healthchecks, Gatus, Beszel</div>
+                <div><strong>Networking & VPN:</strong> UniFi, OPNsense, pfSense, WireGuard, Pi-hole, AdGuard, Cloudflared, Tailscale, Headscale, Gluetun</div>
+                <div><strong>Storage & NAS:</strong> TrueNAS, FreeNAS, OpenMediaVault, Synology DiskStation, QNAP, Nextcloud</div>
+                <div><strong>Databases:</strong> PostgreSQL, MySQL, phpMyAdmin, pgAdmin, Redis, MongoDB, InfluxDB</div>
+                <div><strong>RSS & Reading:</strong> Miniflux, FreshRSS, BookStack, Outline, Wiki.js, Joplin, Trilium</div>
                 <div><strong>Bookmarks:</strong> LinkWarden, Wallabag, Shiori</div>
-                <div><strong>Communication:</strong> Mattermost, Rocket.Chat, Matrix, Element</div>
+                <div><strong>Communication:</strong> Mattermost, Rocket.Chat, Matrix, Element, Gotify, Mastodon</div>
                 <div><strong>Mail:</strong> Mailcow, Roundcube</div>
-                <div><strong>Home Automation:</strong> Home Assistant, ESPHome, Node-RED, Zigbee2MQTT</div>
-                <div><strong>Security:</strong> Vaultwarden, Authentik</div>
-                <div><strong>Productivity:</strong> Grocy, Paperless-ngx, Mealie, Tandoor Recipes</div>
-                <div><strong>Development:</strong> Gitea, VS Code Server</div>
+                <div><strong>Home Automation:</strong> Home Assistant, ESPHome, Homebridge, Node-RED, Zigbee2MQTT, EVCC</div>
+                <div><strong>Security & Auth:</strong> Vaultwarden, Authentik, CrowdSec</div>
+                <div><strong>Finance & Personal:</strong> Firefly III, Ghostfolio, Grocy, Paperless-ngx, Mealie, Tandoor Recipes, Vikunja</div>
+                <div><strong>Development:</strong> Gitea, GitLab, VS Code Server</div>
+                <div><strong>Media Processing:</strong> Tdarr, Unmanic, FileFlows</div>
+                <div><strong>3D Printing:</strong> Moonraker, OctoPrint</div>
                 <div><strong>Gaming:</strong> Minecraft Server, Pterodactyl</div>
-                <div className="text-xs text-purple-300 mt-2">All include default ports & widget configs!</div>
+                <div><strong>Additional Tools:</strong> ChangeDetection, Speedtest Tracker, SmokePing, Custom API widgets</div>
+                <div className="text-xs text-purple-300 mt-2">All include default ports & widget configurations with proper Homepage widget types!</div>
               </div>
             </div>
           </div>

@@ -17,7 +17,12 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "docker:build": "docker build -t homepage-config-gui .",
+    "docker:run": "docker run -p 8080:80 homepage-config-gui",
+    "docker:run-dev": "docker run -p 8080:80 --name homepage-config-gui-dev homepage-config-gui",
+    "docker:stop": "docker stop homepage-config-gui-dev",
+    "docker:clean": "docker rm homepage-config-gui-dev"
   },
   "eslintConfig": {
     "extends": [
