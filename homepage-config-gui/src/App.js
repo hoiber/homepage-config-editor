@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Download, Trash2, Copy, Home, Settings, Upload, ChevronUp, ChevronDown, List, Cog } from 'lucide-react';
+import { Plus, Download, Trash2, Copy, Home, Settings, Upload, ChevronUp, ChevronDown, List, Cog, Edit3 } from 'lucide-react';
 
 const HomepageConfigGUI = () => {
   const [activeTab, setActiveTab] = useState('services');
@@ -958,9 +958,11 @@ const HomepageConfigGUI = () => {
             href: 'http://localhost:8080',
             description: 'Git repository management',
             icon: 'gitlab',
-            widget: null
+            widget: null,
+            ping: null
           }
-        ]
+        ],
+        subgroups: []
       }
     ]
   });
@@ -993,7 +995,8 @@ const HomepageConfigGUI = () => {
     const newGroup = {
       id: `group${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       name: 'New Group',
-      services: []
+      services: [],
+      subgroups: []
     };
     setConfig(prev => ({
       ...prev,
@@ -1012,7 +1015,8 @@ const HomepageConfigGUI = () => {
       href: 'http://localhost:3000',
       description: '',
       icon: '',
-      widget: null
+      widget: null,
+      ping: null
     };
     
     setConfig(prev => ({
@@ -1043,6 +1047,86 @@ const HomepageConfigGUI = () => {
     }));
   };
 
+  const addSubgroup = (parentGroupId) => {
+    const newSubgroup = {
+      id: `subgroup${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+      name: 'New Subgroup',
+      services: []
+    };
+    
+    setConfig(prev => ({
+      ...prev,
+      groups: prev.groups.map(group =>
+        group.id === parentGroupId
+          ? { ...group, subgroups: [...(group.subgroups || []), newSubgroup] }
+          : group
+      )
+    }));
+    setEditingGroup(newSubgroup.id);
+  };
+
+  const updateSubgroup = (parentGroupId, subgroupId, updates) => {
+    setConfig(prev => ({
+      ...prev,
+      groups: prev.groups.map(group =>
+        group.id === parentGroupId
+          ? {
+              ...group,
+              subgroups: (group.subgroups || []).map(subgroup =>
+                subgroup.id === subgroupId ? { ...subgroup, ...updates } : subgroup
+              )
+            }
+          : group
+      )
+    }));
+  };
+
+  const deleteSubgroup = (parentGroupId, subgroupId) => {
+    setConfig(prev => ({
+      ...prev,
+      groups: prev.groups.map(group =>
+        group.id === parentGroupId
+          ? {
+              ...group,
+              subgroups: (group.subgroups || []).filter(subgroup => subgroup.id !== subgroupId)
+            }
+          : group
+      )
+    }));
+  };
+
+  const addServiceToSubgroup = (parentGroupId, subgroupId, quickService = null) => {
+    const newService = quickService ? {
+      id: `service${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+      ...quickService
+    } : {
+      id: `service${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+      name: 'New Service',
+      href: 'http://localhost:3000',
+      description: '',
+      icon: '',
+      widget: null,
+      ping: null
+    };
+    
+    setConfig(prev => ({
+      ...prev,
+      groups: prev.groups.map(group =>
+        group.id === parentGroupId
+          ? {
+              ...group,
+              subgroups: (group.subgroups || []).map(subgroup =>
+                subgroup.id === subgroupId
+                  ? { ...subgroup, services: [...subgroup.services, newService] }
+                  : subgroup
+              )
+            }
+          : group
+      )
+    }));
+    if (!quickService) setEditingService(newService.id);
+  };
+
   const updateService = (serviceId, updates) => {
     setConfig(prev => ({
       ...prev,
@@ -1050,7 +1134,13 @@ const HomepageConfigGUI = () => {
         ...group,
         services: group.services.map(service =>
           service.id === serviceId ? { ...service, ...updates } : service
-        )
+        ),
+        subgroups: (group.subgroups || []).map(subgroup => ({
+          ...subgroup,
+          services: subgroup.services.map(service =>
+            service.id === serviceId ? { ...service, ...updates } : service
+          )
+        }))
       }))
     }));
   };
@@ -1067,7 +1157,11 @@ const HomepageConfigGUI = () => {
       ...prev,
       groups: prev.groups.map(group => ({
         ...group,
-        services: group.services.filter(service => service.id !== serviceId)
+        services: group.services.filter(service => service.id !== serviceId),
+        subgroups: (group.subgroups || []).map(subgroup => ({
+          ...subgroup,
+          services: subgroup.services.filter(service => service.id !== serviceId)
+        }))
       }))
     }));
   };
@@ -1266,26 +1360,59 @@ const HomepageConfigGUI = () => {
       return '';
     }
     
-    // Convert to YAML-like string (simplified)
+    // Helper function to generate service YAML
+    const generateServiceYAML = (service, indent = '  ') => {
+      if (!service.name) return '';
+      
+      let serviceYaml = `${indent}- ${service.name}:\n`;
+      if (service.href) serviceYaml += `${indent}    href: ${service.href}\n`;
+      if (service.description) serviceYaml += `${indent}    description: ${service.description}\n`;
+      if (service.icon) serviceYaml += `${indent}    icon: ${service.icon}\n`;
+      
+      // Add ping configuration
+      if (service.ping && service.ping.enabled) {
+        serviceYaml += `${indent}    ping:\n`;
+        if (service.ping.url) serviceYaml += `${indent}      url: ${service.ping.url}\n`;
+        if (service.ping.interval) serviceYaml += `${indent}      interval: ${service.ping.interval}\n`;
+        if (service.ping.public !== undefined) serviceYaml += `${indent}      public: ${service.ping.public}\n`;
+      }
+      
+      // Add widget configuration
+      if (service.widget && service.widget.type) {
+        serviceYaml += `${indent}    widget:\n`;
+        serviceYaml += `${indent}      type: ${service.widget.type}\n`;
+        if (service.widget.url) serviceYaml += `${indent}      url: ${service.widget.url}\n`;
+        if (service.widget.key) serviceYaml += `${indent}      key: ${service.widget.key}\n`;
+      }
+      
+      return serviceYaml;
+    };
+    
+    // Convert to YAML-like string with nested groups support
     let yamlStr = '';
     config.groups.forEach((group, groupIndex) => {
       if (!group.name) return;
       
       yamlStr += `- ${group.name}:\n`;
       
+      // Add main group services
       if (group.services && group.services.length > 0) {
         group.services.forEach(service => {
-          if (!service.name) return;
+          yamlStr += generateServiceYAML(service);
+        });
+      }
+      
+      // Add subgroups
+      if (group.subgroups && group.subgroups.length > 0) {
+        group.subgroups.forEach(subgroup => {
+          if (!subgroup.name) return;
           
-          yamlStr += `  - ${service.name}:\n`;
-          if (service.href) yamlStr += `      href: ${service.href}\n`;
-          if (service.description) yamlStr += `      description: ${service.description}\n`;
-          if (service.icon) yamlStr += `      icon: ${service.icon}\n`;
-          if (service.widget && service.widget.type) {
-            yamlStr += `      widget:\n`;
-            yamlStr += `        type: ${service.widget.type}\n`;
-            if (service.widget.url) yamlStr += `        url: ${service.widget.url}\n`;
-            if (service.widget.key) yamlStr += `        key: ${service.widget.key}\n`;
+          yamlStr += `  - ${subgroup.name}:\n`;
+          
+          if (subgroup.services && subgroup.services.length > 0) {
+            subgroup.services.forEach(service => {
+              yamlStr += generateServiceYAML(service, '    ');
+            });
           }
         });
       }
@@ -1796,11 +1923,149 @@ const HomepageConfigGUI = () => {
                             </>
                           )}
                         </div>
+
+                        {/* Ping Configuration */}
+                        <div className="mt-4 pt-3 border-t border-slate-600">
+                          <label className="block text-slate-300 mb-2 text-sm font-medium">Ping Configuration (Optional)</label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-slate-400 mb-1">Host/URL to ping</label>
+                              <input
+                                type="text"
+                                value={service.ping?.url || ''}
+                                onChange={(e) => updateService(service.id, { 
+                                  ping: { ...(service.ping || {}), url: e.target.value }
+                                })}
+                                placeholder="example.com or http://localhost:8080"
+                                className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-400 mb-1">Interval (seconds)</label>
+                              <input
+                                type="number"
+                                value={service.ping?.interval || 30}
+                                onChange={(e) => updateService(service.id, { 
+                                  ping: { ...(service.ping || {}), interval: parseInt(e.target.value) || 30 }
+                                })}
+                                placeholder="30"
+                                min="10"
+                                max="3600"
+                                className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-sm"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 mt-2">
+                            <label className="flex items-center gap-2 text-xs text-slate-400">
+                              <input
+                                type="checkbox"
+                                checked={service.ping?.enabled || false}
+                                onChange={(e) => updateService(service.id, { 
+                                  ping: { ...(service.ping || {}), enabled: e.target.checked }
+                                })}
+                                className="rounded"
+                              />
+                              Enable ping monitoring
+                            </label>
+                            <label className="flex items-center gap-2 text-xs text-slate-400">
+                              <input
+                                type="checkbox"
+                                checked={service.ping?.public || false}
+                                onChange={(e) => updateService(service.id, { 
+                                  ping: { ...(service.ping || {}), public: e.target.checked }
+                                })}
+                                className="rounded"
+                              />
+                              Show publicly
+                            </label>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
+
+                  {/* Subgroups */}
+                  {(group.subgroups || []).map((subgroup) => (
+                    <div key={subgroup.id} className="mt-4 bg-slate-700 rounded-lg p-3 border border-slate-600">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          {editingGroup === subgroup.id ? (
+                            <input
+                              type="text"
+                              value={subgroup.name}
+                              onChange={(e) => updateSubgroup(group.id, subgroup.id, { name: e.target.value })}
+                              onBlur={() => setEditingGroup(null)}
+                              onKeyDown={(e) => e.key === 'Enter' && setEditingGroup(null)}
+                              className="bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-sm"
+                              autoFocus
+                            />
+                          ) : (
+                            <h4
+                              className="text-sm font-medium text-blue-300 cursor-pointer hover:text-blue-200 transition-colors"
+                              onClick={() => setEditingGroup(subgroup.id)}
+                            >
+                              📁 {subgroup.name}
+                            </h4>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => addServiceToSubgroup(group.id, subgroup.id)}
+                            className="p-1 text-green-400 hover:text-green-300 hover:bg-slate-600 rounded transition-all text-xs"
+                            title="Add service to subgroup"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => deleteSubgroup(group.id, subgroup.id)}
+                            className="p-1 text-red-400 hover:text-red-300 transition-colors text-xs"
+                            title="Delete subgroup"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Subgroup Services */}
+                      <div className="space-y-2">
+                        {subgroup.services.map((service) => (
+                          <div key={service.id} className="bg-slate-600 rounded p-2 text-sm">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-blue-200">{service.name}</span>
+                                <span className="text-xs text-slate-400">({service.url})</span>
+                              </div>
+                              <button
+                                onClick={() => setEditingService(service.id)}
+                                className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
+                                title="Edit service"
+                              >
+                                <Edit3 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {subgroup.services.length === 0 && (
+                          <div className="text-center py-2 text-slate-400 text-xs">
+                            <p>No services in this subgroup</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Add Subgroup Button */}
+                  <div className="mt-3">
+                    <button
+                      onClick={() => addSubgroup(group.id)}
+                      className="flex items-center gap-2 px-3 py-2 text-sm bg-slate-700 hover:bg-slate-600 text-blue-300 hover:text-blue-200 rounded border border-slate-600 hover:border-slate-500 transition-all"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Subgroup
+                    </button>
+                  </div>
                   
-                  {group.services.length === 0 && (
+                  {group.services.length === 0 && (group.subgroups || []).length === 0 && (
                     <div className="text-center py-8 text-slate-400">
                       <p>No services in this group</p>
                       <button
