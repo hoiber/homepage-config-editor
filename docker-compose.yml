@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  homepage-config-gui:
+    build: .
+    container_name: homepage-config-gui
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage-config.rule=Host(`config.yourdomain.com`)"
+      - "traefik.http.services.homepage-config.loadbalancer.server.port=3000"

@@ -1,0 +1,58 @@
+{
+  "name": "homepage-config-gui",
+  "version": "1.0.0",
+  "description": "Visual GUI for Homepage configuration without Docker labels",
+  "private": true,
+  "homepage": ".",
+  "dependencies": {
+    "lucide-react": "^0.263.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "^0.0.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "keywords": [
+    "homepage",
+    "dashboard",
+    "homelab",
+    "docker",
+    "yaml",
+    "configuration",
+    "gui"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/homepage-config-gui.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/homepage-config-gui/issues"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.1.11"
+  }
+}
