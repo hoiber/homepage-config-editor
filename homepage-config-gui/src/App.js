@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, Download, Trash2, Copy, Home, Settings, Upload, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Download, Trash2, Copy, Home, Settings, Upload, ChevronUp, ChevronDown, List, Cog } from 'lucide-react';
 
 const HomepageConfigGUI = () => {
+  const [activeTab, setActiveTab] = useState('services');
   const [selectedQuickAdd, setSelectedQuickAdd] = useState({});
   const [importError, setImportError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
@@ -964,6 +965,27 @@ const HomepageConfigGUI = () => {
     ]
   });
 
+  const [settingsConfig, setSettingsConfig] = useState({
+    title: 'Homepage',
+    favicon: '',
+    theme: 'dark',
+    color: 'slate',
+    headerStyle: 'boxed',
+    hideVersion: false,
+    language: 'en',
+    target: '_blank',
+    quickLaunch: {
+      searchDescriptions: true,
+      hideInternetSearch: false,
+      hideVisitURL: false
+    },
+    layout: {},
+    providers: {
+      openweathermap: '',
+      weatherapi: ''
+    }
+  });
+
   const [editingGroup, setEditingGroup] = useState(null);
   const [editingService, setEditingService] = useState(null);
 
@@ -1277,20 +1299,61 @@ const HomepageConfigGUI = () => {
     return yamlStr;
   };
 
+  const generateSettingsYAML = () => {
+    if (!settingsConfig) {
+      return '';
+    }
+    
+    let yamlStr = '';
+    
+    // Basic settings
+    if (settingsConfig.title) yamlStr += `title: ${settingsConfig.title}\n`;
+    if (settingsConfig.favicon) yamlStr += `favicon: ${settingsConfig.favicon}\n`;
+    yamlStr += `theme: ${settingsConfig.theme}\n`;
+    yamlStr += `color: ${settingsConfig.color}\n`;
+    yamlStr += `headerStyle: ${settingsConfig.headerStyle}\n`;
+    if (settingsConfig.hideVersion) yamlStr += `hideVersion: true\n`;
+    yamlStr += `language: ${settingsConfig.language}\n`;
+    yamlStr += `target: ${settingsConfig.target}\n`;
+    
+    // Quick Launch settings
+    yamlStr += `\nquicklaunch:\n`;
+    yamlStr += `  searchDescriptions: ${settingsConfig.quickLaunch.searchDescriptions}\n`;
+    yamlStr += `  hideInternetSearch: ${settingsConfig.quickLaunch.hideInternetSearch}\n`;
+    yamlStr += `  hideVisitURL: ${settingsConfig.quickLaunch.hideVisitURL}\n`;
+    
+    // Layout (placeholder)
+    yamlStr += `\nlayout:\n`;
+    
+    // Providers
+    if (settingsConfig.providers.openweathermap || settingsConfig.providers.weatherapi) {
+      yamlStr += `\nproviders:\n`;
+      if (settingsConfig.providers.openweathermap) {
+        yamlStr += `  openweathermap: ${settingsConfig.providers.openweathermap}\n`;
+      }
+      if (settingsConfig.providers.weatherapi) {
+        yamlStr += `  weatherapi: ${settingsConfig.providers.weatherapi}\n`;
+      }
+    }
+
+    return yamlStr;
+  };
+
   const downloadConfig = () => {
-    const yamlContent = generateYAML();
+    const yamlContent = activeTab === 'services' ? generateYAML() : generateSettingsYAML();
+    const fileName = activeTab === 'services' ? 'services.yaml' : 'settings.yaml';
     const blob = new Blob([yamlContent], { type: 'text/yaml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'services.yaml';
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const copyToClipboard = async () => {
     try {
-      const yamlContent = generateYAML();
+      const yamlContent = activeTab === 'services' ? generateYAML() : generateSettingsYAML();
       if (!yamlContent) {
         setImportError('No configuration to copy');
         setTimeout(() => setImportError(''), 3000);
@@ -1379,6 +1442,33 @@ const HomepageConfigGUI = () => {
               Homepage Config Builder
             </h1>
           </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-1 mb-6 bg-slate-800 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => setActiveTab('services')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'services'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+            }`}
+          >
+            <List className="h-4 w-4" />
+            Services
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'settings'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+            }`}
+          >
+            <Cog className="h-4 w-4" />
+            Settings
+          </button>
+        </div>
 
         {/* Hidden file input for import */}
         <input
@@ -1418,6 +1508,13 @@ const HomepageConfigGUI = () => {
             </div>
           </div>
         )}
+        {/* Controls */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-semibold">
+              {activeTab === 'services' ? 'Services Configuration' : 'Settings Configuration'}
+            </h2>
+          </div>
           <div className="flex gap-3">
             <button
               onClick={triggerImport}
@@ -1438,13 +1535,14 @@ const HomepageConfigGUI = () => {
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
             >
               <Download className="h-4 w-4" />
-              Download services.yaml
+              Download {activeTab === 'services' ? 'services.yaml' : 'settings.yaml'}
             </button>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {activeTab === 'services' ? (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
           {/* Config Builder */}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -1794,6 +1892,264 @@ const HomepageConfigGUI = () => {
             </div>
           </div>
         </div>
+        ) : (
+          /* Settings Configuration */
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            {/* Settings Form */}
+            <div className="space-y-6">
+              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                <h3 className="text-lg font-medium mb-4">General Settings</h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-300 mb-1 text-sm">Title</label>
+                      <input
+                        type="text"
+                        value={settingsConfig.title}
+                        onChange={(e) => setSettingsConfig(prev => ({ ...prev, title: e.target.value }))}
+                        className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                        placeholder="Homepage"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 mb-1 text-sm">Favicon URL</label>
+                      <input
+                        type="url"
+                        value={settingsConfig.favicon}
+                        onChange={(e) => setSettingsConfig(prev => ({ ...prev, favicon: e.target.value }))}
+                        className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                        placeholder="https://example.com/favicon.ico"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-slate-300 mb-1 text-sm">Theme</label>
+                      <select
+                        value={settingsConfig.theme}
+                        onChange={(e) => setSettingsConfig(prev => ({ ...prev, theme: e.target.value }))}
+                        className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                      >
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 mb-1 text-sm">Color</label>
+                      <select
+                        value={settingsConfig.color}
+                        onChange={(e) => setSettingsConfig(prev => ({ ...prev, color: e.target.value }))}
+                        className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                      >
+                        <option value="slate">Slate</option>
+                        <option value="gray">Gray</option>
+                        <option value="zinc">Zinc</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="stone">Stone</option>
+                        <option value="red">Red</option>
+                        <option value="orange">Orange</option>
+                        <option value="amber">Amber</option>
+                        <option value="yellow">Yellow</option>
+                        <option value="lime">Lime</option>
+                        <option value="green">Green</option>
+                        <option value="emerald">Emerald</option>
+                        <option value="teal">Teal</option>
+                        <option value="cyan">Cyan</option>
+                        <option value="sky">Sky</option>
+                        <option value="blue">Blue</option>
+                        <option value="indigo">Indigo</option>
+                        <option value="violet">Violet</option>
+                        <option value="purple">Purple</option>
+                        <option value="fuchsia">Fuchsia</option>
+                        <option value="pink">Pink</option>
+                        <option value="rose">Rose</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 mb-1 text-sm">Header Style</label>
+                      <select
+                        value={settingsConfig.headerStyle}
+                        onChange={(e) => setSettingsConfig(prev => ({ ...prev, headerStyle: e.target.value }))}
+                        className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                      >
+                        <option value="boxed">Boxed</option>
+                        <option value="underlined">Underlined</option>
+                        <option value="clean">Clean</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-300 mb-1 text-sm">Language</label>
+                      <select
+                        value={settingsConfig.language}
+                        onChange={(e) => setSettingsConfig(prev => ({ ...prev, language: e.target.value }))}
+                        className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                      >
+                        <option value="en">English</option>
+                        <option value="ca">Catalan</option>
+                        <option value="de">German</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                        <option value="he">Hebrew</option>
+                        <option value="hu">Hungarian</option>
+                        <option value="it">Italian</option>
+                        <option value="ja">Japanese</option>
+                        <option value="ko">Korean</option>
+                        <option value="lv">Latvian</option>
+                        <option value="nl">Dutch</option>
+                        <option value="no">Norwegian</option>
+                        <option value="pl">Polish</option>
+                        <option value="pt">Portuguese</option>
+                        <option value="ru">Russian</option>
+                        <option value="sv">Swedish</option>
+                        <option value="zh">Chinese</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 mb-1 text-sm">Target</label>
+                      <select
+                        value={settingsConfig.target}
+                        onChange={(e) => setSettingsConfig(prev => ({ ...prev, target: e.target.value }))}
+                        className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                      >
+                        <option value="_blank">New Tab (_blank)</option>
+                        <option value="_self">Same Frame (_self)</option>
+                        <option value="_parent">Parent Frame (_parent)</option>
+                        <option value="_top">Full Window (_top)</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="hideVersion"
+                      checked={settingsConfig.hideVersion}
+                      onChange={(e) => setSettingsConfig(prev => ({ ...prev, hideVersion: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    <label htmlFor="hideVersion" className="text-slate-300 text-sm">Hide Version</label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                <h3 className="text-lg font-medium mb-4">Quick Launch Settings</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="searchDescriptions"
+                      checked={settingsConfig.quickLaunch.searchDescriptions}
+                      onChange={(e) => setSettingsConfig(prev => ({ 
+                        ...prev, 
+                        quickLaunch: { ...prev.quickLaunch, searchDescriptions: e.target.checked }
+                      }))}
+                      className="mr-2"
+                    />
+                    <label htmlFor="searchDescriptions" className="text-slate-300 text-sm">Search Descriptions</label>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="hideInternetSearch"
+                      checked={settingsConfig.quickLaunch.hideInternetSearch}
+                      onChange={(e) => setSettingsConfig(prev => ({ 
+                        ...prev, 
+                        quickLaunch: { ...prev.quickLaunch, hideInternetSearch: e.target.checked }
+                      }))}
+                      className="mr-2"
+                    />
+                    <label htmlFor="hideInternetSearch" className="text-slate-300 text-sm">Hide Internet Search</label>
+                  </div>
+                  
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="hideVisitURL"
+                      checked={settingsConfig.quickLaunch.hideVisitURL}
+                      onChange={(e) => setSettingsConfig(prev => ({ 
+                        ...prev, 
+                        quickLaunch: { ...prev.quickLaunch, hideVisitURL: e.target.checked }
+                      }))}
+                      className="mr-2"
+                    />
+                    <label htmlFor="hideVisitURL" className="text-slate-300 text-sm">Hide Visit URL</label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                <h3 className="text-lg font-medium mb-4">Weather Providers</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 text-sm">OpenWeatherMap API Key</label>
+                    <input
+                      type="text"
+                      value={settingsConfig.providers.openweathermap}
+                      onChange={(e) => setSettingsConfig(prev => ({ 
+                        ...prev, 
+                        providers: { ...prev.providers, openweathermap: e.target.value }
+                      }))}
+                      className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                      placeholder="your-openweathermap-api-key"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-slate-300 mb-1 text-sm">WeatherAPI Key</label>
+                    <input
+                      type="text"
+                      value={settingsConfig.providers.weatherapi}
+                      onChange={(e) => setSettingsConfig(prev => ({ 
+                        ...prev, 
+                        providers: { ...prev.providers, weatherapi: e.target.value }
+                      }))}
+                      className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                      placeholder="your-weatherapi-key"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Settings YAML Preview */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-slate-400" />
+                <h2 className="text-xl font-semibold">Generated settings.yaml</h2>
+              </div>
+              
+              <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+                <div className="bg-slate-700 px-4 py-2 text-sm text-slate-300 border-b border-slate-600">
+                  settings.yaml
+                </div>
+                <pre className="p-4 text-sm overflow-auto max-h-96 text-green-400">
+                  <code>{generateSettingsYAML() || '# No configuration yet'}</code>
+                </pre>
+              </div>
+
+              {/* Settings Tips */}
+              <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-800">
+                <h3 className="font-semibold text-blue-300 mb-2">Settings Configuration Tips</h3>
+                <ul className="text-sm text-blue-200 space-y-1">
+                  <li>• <strong>Title:</strong> Sets the browser title and header text</li>
+                  <li>• <strong>Theme:</strong> Choose between light and dark modes</li>
+                  <li>• <strong>Color:</strong> Sets the accent color throughout the interface</li>
+                  <li>• <strong>Header Style:</strong> Changes how the header appears</li>
+                  <li>• <strong>Language:</strong> Sets the interface language</li>
+                  <li>• <strong>Target:</strong> Controls how links open (new tab, same window, etc.)</li>
+                  <li>• <strong>Quick Launch:</strong> Configures search behavior</li>
+                  <li>• <strong>Weather Providers:</strong> API keys for weather widgets</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
