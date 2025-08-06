@@ -1,0 +1,54 @@
+{
+  "name": "homepage-config-editor",
+  "version": "1.0.0",
+  "description": "A comprehensive web-based GUI for creating, editing, and managing Homepage dashboard configurations with live file updates and Docker integration.",
+  "main": "homepage-config-gui/server.js",
+  "scripts": {
+    "install": "cd homepage-config-gui && npm install",
+    "build": "cd homepage-config-gui && npm run build",
+    "start": "cd homepage-config-gui && npm start",
+    "server": "cd homepage-config-gui && npm run server",
+    "test": "cd homepage-config-gui && npm test",
+    "dev": "cd homepage-config-gui && npm run dev",
+    "docker:build": "cd homepage-config-gui && docker build -t homepage-config-gui:live .",
+    "docker:build-static": "cd homepage-config-gui && docker build -f Dockerfile.static -t homepage-config-gui:static .",
+    "docker:run": "docker-compose --profile full up -d --build",
+    "docker:stop": "docker-compose down",
+    "lint": "cd homepage-config-gui && npm run lint || echo 'Linting not configured'",
+    "audit": "cd homepage-config-gui && npm audit"
+  },
+  "workspaces": [
+    "homepage-config-gui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/homepage-config-editor.git"
+  },
+  "keywords": [
+    "homepage",
+    "dashboard",
+    "config",
+    "gui",
+    "docker",
+    "yaml",
+    "react",
+    "express",
+    "live-updates",
+    "selfhosted"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/your-username/homepage-config-editor/issues"
+  },
+  "homepage": "https://github.com/your-username/homepage-config-editor#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "homepage-config-gui": "file:./homepage-config-gui"
+  },
+  "devDependencies": {},
+  "peerDependencies": {}
+}
