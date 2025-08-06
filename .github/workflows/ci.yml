@@ -29,15 +29,26 @@ jobs:
       run: npm ci
 
     - name: Run tests
-      run: npm test -- --coverage --ci --passWithNoTests
+      run: npm test -- --coverage --ci --passWithNoTests --watchAll=false
 
     - name: Build application
       run: npm run build
 
-    - name: Test Docker build
+    - name: Test Docker build (Live)
       run: |
         docker build -t homepage-config-gui:test .
-        docker run --rm homepage-config-gui:test nginx -t
+        docker run --rm -d --name test-live -p 3001:3001 homepage-config-gui:test
+        sleep 10
+        curl -f http://localhost:3001/api/health || exit 1
+        docker stop test-live
+
+    - name: Test Docker build (Static)
+      run: |
+        docker build -f Dockerfile.static -t homepage-config-gui:static-test .
+        docker run --rm -d --name test-static -p 8080:80 homepage-config-gui:static-test
+        sleep 5
+        curl -f http://localhost:8080/ || exit 1
+        docker stop test-static
 
   docker-test:
     runs-on: ubuntu-latest
@@ -62,7 +73,7 @@ jobs:
 
     - name: Test Docker image
       run: |
-        docker run --rm -d --name test-container -p 8080:80 homepage-config-gui:ci-test
-        sleep 5
-        curl -f http://localhost:8080/health || exit 1
+        docker run --rm -d --name test-container -p 3001:3001 homepage-config-gui:ci-test
+        sleep 10
+        curl -f http://localhost:3001/api/health || exit 1
         docker stop test-container

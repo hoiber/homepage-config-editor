@@ -50,7 +50,23 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        body: |
+          ## Homepage Config GUI Release ${{ github.ref_name }}
+          
+          ### 🚀 Features
+          - Visual configuration builder for Homepage
+          - Live YAML file updates
+          - 131+ pre-configured services
+          - 100+ widget types
+          - Docker integration with multiple profiles
+          
+          ### 🐳 Docker Images
+          - `ghcr.io/${{ github.repository }}:${{ github.ref_name }}` (Live updates)
+          - `ghcr.io/${{ github.repository }}:latest` (Latest stable)
+          
+          ### 📖 Documentation
+          See README.md for installation and usage instructions.
         draft: false
         prerelease: false
