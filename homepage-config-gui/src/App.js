@@ -1,11 +1,21 @@
-import { useState } from 'react';
-import { Plus, Download, Trash2, Copy, Home, Settings, Upload, ChevronUp, ChevronDown, List, Cog, Edit3 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Download, Trash2, Copy, Home, Settings, Upload, ChevronUp, ChevronDown, List, Cog, Info, CloudUpload, CloudDownload } from 'lucide-react';
 
 const HomepageConfigGUI = () => {
   const [activeTab, setActiveTab] = useState('services');
   const [selectedQuickAdd, setSelectedQuickAdd] = useState({});
   const [importError, setImportError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
+  
+  // Live update functionality
+  const [liveUpdateConfig, setLiveUpdateConfig] = useState({
+    enabled: false,
+    configPath: '',
+    status: 'unknown'
+  });
+  // eslint-disable-next-line no-unused-vars
+  const [backupFiles, setBackupFiles] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   
   const commonServices = {
     // Media Servers & Streaming
@@ -990,6 +1000,182 @@ const HomepageConfigGUI = () => {
 
   const [editingGroup, setEditingGroup] = useState(null);
   const [editingService, setEditingService] = useState(null);
+  
+  // Information widgets configuration
+  const [informationWidgets, setInformationWidgets] = useState({
+    widgets: [
+      {
+        id: 'widget1',
+        type: 'datetime',
+        enabled: true,
+        options: {
+          format: {
+            timeStyle: 'short',
+            dateStyle: 'short'
+          },
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      }
+    ]
+  });
+
+  // Live update API functions
+  const checkLiveUpdateStatus = async () => {
+    try {
+      const response = await fetch('/api/config/status');
+      const data = await response.json();
+      setLiveUpdateConfig({
+        enabled: data.liveUpdates,
+        configPath: data.configPath,
+        status: response.ok ? 'connected' : 'error',
+        files: data.files
+      });
+      return data;
+    } catch (error) {
+      setLiveUpdateConfig(prev => ({ ...prev, status: 'disconnected' }));
+      return null;
+    }
+  };
+
+  const loadConfigFromServer = async (type) => {
+    if (!liveUpdateConfig.enabled) return false;
+    
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/config/${type}`);
+      
+      if (response.status === 404) {
+        // File doesn't exist yet, that's okay
+        return true;
+      }
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load ${type} configuration`);
+      }
+      
+      const data = await response.json();
+      
+      // Parse and apply the loaded YAML content
+      if (data.content) {
+        try {
+          const parsed = parseYAML(data.content);
+          if (type === 'services' && parsed.services) {
+            setConfig({ groups: parsed.services });
+          } else if (type === 'settings') {
+            setSettingsConfig(prev => ({ ...prev, ...parsed }));
+          } else if (type === 'widgets') {
+            if (parsed.widgets) {
+              setInformationWidgets({ widgets: parsed.widgets });
+            }
+          }
+          setImportSuccess(`Loaded ${type} configuration from server`);
+          setImportError('');
+        } catch (parseError) {
+          setImportError(`Failed to parse ${type} configuration: ${parseError.message}`);
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      setImportError(`Failed to load ${type} configuration: ${error.message}`);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveConfigToServer = async (type) => {
+    if (!liveUpdateConfig.enabled) return false;
+    
+    try {
+      setIsLoading(true);
+      let content;
+      
+      if (type === 'services') {
+        content = generateYAML();
+      } else if (type === 'settings') {
+        content = generateSettingsYAML();
+      } else if (type === 'widgets') {
+        content = generateWidgetsYAML();
+      }
+      
+      if (!content || content.trim() === '# No configuration yet') {
+        setImportError(`No ${type} configuration to save`);
+        return false;
+      }
+      
+      const response = await fetch(`/api/config/${type}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to save ${type} configuration`);
+      }
+      
+      const data = await response.json();
+      setImportSuccess(`Saved ${type} configuration to ${data.path}`);
+      setImportError('');
+      
+      // Refresh backup list
+      loadBackupList(type);
+      
+      return true;
+    } catch (error) {
+      setImportError(`Failed to save ${type} configuration: ${error.message}`);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadBackupList = async (type) => {
+    if (!liveUpdateConfig.enabled) return;
+    
+    try {
+      const response = await fetch(`/api/config/${type}/backups`);
+      if (response.ok) {
+        const backups = await response.json();
+        setBackupFiles(backups);
+      }
+    } catch (error) {
+      console.error('Failed to load backup list:', error);
+    }
+  };
+
+  // eslint-disable-next-line no-unused-vars
+  const deleteBackup = async (type, timestamp) => {
+    if (!liveUpdateConfig.enabled) return false;
+    
+    try {
+      const response = await fetch(`/api/config/${type}/backup/${timestamp}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setImportSuccess('Backup deleted successfully');
+        loadBackupList(type); // Refresh list
+        return true;
+      } else {
+        const errorData = await response.json();
+        setImportError(errorData.error || 'Failed to delete backup');
+        return false;
+      }
+    } catch (error) {
+      setImportError(`Failed to delete backup: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Check live update status on component mount
+  useEffect(() => {
+    checkLiveUpdateStatus();
+  }, []);
 
   const addGroup = () => {
     const newGroup = {
@@ -1035,6 +1221,14 @@ const HomepageConfigGUI = () => {
     if (selectedService && commonServices[selectedService]) {
       addService(groupId, commonServices[selectedService]);
       setSelectedQuickAdd(prev => ({ ...prev, [groupId]: '' }));
+    }
+  };
+
+  const quickAddServiceToSubgroup = (groupId, subgroupId) => {
+    const selectedService = selectedQuickAdd[`${groupId}_${subgroupId}`];
+    if (selectedService && commonServices[selectedService]) {
+      addServiceToSubgroup(groupId, subgroupId, commonServices[selectedService]);
+      setSelectedQuickAdd(prev => ({ ...prev, [`${groupId}_${subgroupId}`]: '' }));
     }
   };
 
@@ -1167,65 +1361,243 @@ const HomepageConfigGUI = () => {
   };
 
   const parseYAML = (yamlContent) => {
+    // Clean up and normalize the YAML content
+    const normalizeYAML = (content) => {
+      return content
+        // Remove BOM and normalize line endings
+        .replace(/^\uFEFF/, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        // Fix common spacing issues
+        .replace(/^\s+$/gm, '') // Remove lines with only whitespace
+        .replace(/\t/g, '  ') // Convert tabs to spaces
+        // Fix missing colons after group/service names
+        .replace(/^(\s*-\s+)([^:\n]+)(\s*)$/gm, '$1$2:$3')
+        // Normalize quoted values
+        .replace(/:\s*"([^"]*)"$/gm, ': $1')
+        .replace(/:\s*'([^']*)'$/gm, ': $1')
+        // Fix common Homepage config variations
+        .replace(/\bhref\s*:/gi, 'href:')
+        .replace(/\burl\s*:/gi, 'url:')
+        .replace(/\bdescription\s*:/gi, 'description:')
+        .replace(/\bicon\s*:/gi, 'icon:')
+        .replace(/\bwidget\s*:/gi, 'widget:')
+        .replace(/\btype\s*:/gi, 'type:')
+        .replace(/\bkey\s*:/gi, 'key:')
+        .replace(/\bping\s*:/gi, 'ping:')
+        .replace(/\binterval\s*:/gi, 'interval:')
+        .replace(/\benabled\s*:/gi, 'enabled:')
+        .replace(/\bpublic\s*:/gi, 'public:')
+        // Handle different service URL formats
+        .replace(/\bserver\s*:/gi, 'url:')
+        .replace(/\baddress\s*:/gi, 'url:')
+        .replace(/\bhost\s*:/gi, 'url:');
+    };
+
+    // Parse value with flexible type handling
+    const parseValue = (value) => {
+      if (value === undefined || value === null) return '';
+      
+      const trimmed = String(value).trim();
+      
+      // Handle boolean values
+      if (/^(true|false|yes|no|on|off|1|0)$/i.test(trimmed)) {
+        return /^(true|yes|on|1)$/i.test(trimmed);
+      }
+      
+      // Handle numeric values
+      if (/^\d+$/.test(trimmed)) {
+        const num = parseInt(trimmed, 10);
+        return !isNaN(num) ? num : trimmed;
+      }
+      
+      // Remove quotes
+      return trimmed.replace(/^["']|["']$/g, '');
+    };
+
+    // Generate unique IDs
+    const generateId = (prefix) => `${prefix}${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
+    try {
+      const normalizedContent = normalizeYAML(yamlContent);
+      const lines = normalizedContent.split('\n');
+      const groups = [];
+      let currentGroup = null;
+      let currentSubgroup = null;
+      let currentService = null;
+      let currentContext = null; // 'widget', 'ping', etc.
+      let indentStack = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        
+        if (!trimmed || trimmed.startsWith('#')) continue;
+
+        // Calculate indentation level
+        const indent = line.match(/^(\s*)/)[1].length;
+        
+        // Update indent stack
+        while (indentStack.length > 0 && indentStack[indentStack.length - 1].indent >= indent) {
+          const popped = indentStack.pop();
+          if (popped.type === 'widget' || popped.type === 'ping') {
+            currentContext = null;
+          }
+        }
+
+        // Group level (no indentation or minimal indentation)
+        if ((indent === 0 || (indent <= 2 && line.match(/^[\s]*-\s+/))) && trimmed.includes(':') && !trimmed.match(/^\s*(href|url|description|icon|widget|ping|type|key|interval|enabled|public):/i)) {
+          const groupName = trimmed.replace(/^-\s*/, '').replace(/:.*$/, '').trim();
+          if (groupName) {
+            currentGroup = {
+              id: generateId('group'),
+              name: groupName,
+              services: [],
+              subgroups: []
+            };
+            groups.push(currentGroup);
+            currentSubgroup = null;
+            currentService = null;
+            currentContext = null;
+            indentStack = [{ type: 'group', indent, name: groupName }];
+          }
+        }
+        // Service level (indented under group)
+        else if (indent >= 2 && trimmed.startsWith('- ') && trimmed.includes(':') && currentGroup && !trimmed.match(/^\s*(href|url|description|icon|widget|ping|type|key|interval|enabled|public):/i)) {
+          const serviceName = trimmed.replace(/^-\s*/, '').replace(/:.*$/, '').trim();
+          if (serviceName) {
+            // Check if this should be a subgroup (deeper indentation suggests subgroup)
+            const shouldBeSubgroup = indent > 4 && currentService === null;
+            
+            if (shouldBeSubgroup) {
+              // Create subgroup
+              currentSubgroup = {
+                id: generateId('subgroup'),
+                name: serviceName,
+                services: []
+              };
+              currentGroup.subgroups.push(currentSubgroup);
+              currentService = null;
+              indentStack.push({ type: 'subgroup', indent, name: serviceName });
+            } else {
+              // Create service
+              currentService = {
+                id: generateId('service'),
+                name: serviceName,
+                href: '',
+                url: '',
+                description: '',
+                icon: '',
+                ping: null,
+                widget: null
+              };
+              
+              if (currentSubgroup) {
+                currentSubgroup.services.push(currentService);
+              } else {
+                currentGroup.services.push(currentService);
+              }
+              
+              currentContext = null;
+              indentStack.push({ type: 'service', indent, name: serviceName });
+            }
+          }
+        }
+        // Property level
+        else if (currentService && trimmed.includes(':')) {
+          const colonIndex = trimmed.indexOf(':');
+          const key = trimmed.substring(0, colonIndex).trim().toLowerCase();
+          const value = parseValue(trimmed.substring(colonIndex + 1).trim());
+
+          if (key === 'widget' && !value) {
+            currentService.widget = { type: '', url: '', key: '' };
+            currentContext = 'widget';
+            indentStack.push({ type: 'widget', indent });
+          } else if (key === 'ping' && !value) {
+            currentService.ping = { enabled: false, url: '', interval: 30, public: false };
+            currentContext = 'ping';
+            indentStack.push({ type: 'ping', indent });
+          } else if (currentContext === 'widget' && currentService.widget) {
+            if (key === 'type') currentService.widget.type = value;
+            else if (key === 'url' || key === 'server' || key === 'address' || key === 'host') currentService.widget.url = value;
+            else if (key === 'key' || key === 'apikey' || key === 'api_key' || key === 'token') currentService.widget.key = value;
+            else if (key === 'username' || key === 'user') currentService.widget.username = value;
+            else if (key === 'password' || key === 'pass') currentService.widget.password = value;
+          } else if (currentContext === 'ping' && currentService.ping) {
+            if (key === 'url' || key === 'host' || key === 'address') currentService.ping.url = value;
+            else if (key === 'interval') currentService.ping.interval = typeof value === 'number' ? value : 30;
+            else if (key === 'enabled') currentService.ping.enabled = Boolean(value);
+            else if (key === 'public') currentService.ping.public = Boolean(value);
+          } else {
+            // Direct service properties
+            if (key === 'href' || key === 'url') currentService.href = value;
+            else if (key === 'description') currentService.description = value;
+            else if (key === 'icon') currentService.icon = value;
+          }
+        }
+      }
+
+      // Clean up services - ensure href is set from url if available
+      groups.forEach(group => {
+        [...group.services, ...(group.subgroups?.flatMap(sg => sg.services) || [])].forEach(service => {
+          if (!service.href && service.url) {
+            service.href = service.url;
+          }
+          // Remove empty ping objects
+          if (service.ping && !service.ping.enabled && !service.ping.url) {
+            service.ping = null;
+          }
+          // Remove empty widget objects
+          if (service.widget && !service.widget.type && !service.widget.url && !service.widget.key) {
+            service.widget = null;
+          }
+        });
+      });
+
+      return groups;
+    } catch (error) {
+      console.warn('Advanced YAML parsing failed, trying simple fallback:', error);
+      return parseYAMLSimple(yamlContent);
+    }
+  };
+
+  // Fallback simple parser
+  const parseYAMLSimple = (yamlContent) => {
     const lines = yamlContent.split('\n');
     const groups = [];
     let currentGroup = null;
     let currentService = null;
-    let inWidget = false;
 
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#')) continue;
 
-      if (line.startsWith('- ') && line.includes(':') && !line.startsWith('  ')) {
+      if (line.match(/^-?\s*[\w\s]+:\s*$/)) {
         // New group
-        const groupName = line.substring(2).replace(':', '').trim();
+        const groupName = trimmed.replace(/^-\s*/, '').replace(':', '').trim();
         if (groupName) {
           currentGroup = {
             id: `group${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
             name: groupName,
-            services: []
+            services: [],
+            subgroups: []
           };
           groups.push(currentGroup);
-          inWidget = false;
         }
-      } else if (line.startsWith('  - ') && line.includes(':')) {
+      } else if (line.match(/^\s+-\s+[\w\s]+:/) && currentGroup) {
         // New service
-        const serviceName = line.substring(4).replace(':', '').trim();
-        if (serviceName && currentGroup) {
+        const serviceName = line.replace(/^\s*-\s*/, '').replace(':', '').trim();
+        if (serviceName) {
           currentService = {
             id: `service${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
             name: serviceName,
             href: '',
             description: '',
             icon: '',
+            ping: null,
             widget: null
           };
           currentGroup.services.push(currentService);
-          inWidget = false;
-        }
-      } else if (line.includes('href:') && currentService) {
-        const hrefValue = line.split('href:')[1]?.trim();
-        if (hrefValue) currentService.href = hrefValue;
-      } else if (line.includes('description:') && currentService) {
-        const descValue = line.split('description:')[1]?.trim();
-        if (descValue) currentService.description = descValue;
-      } else if (line.includes('icon:') && currentService) {
-        const iconValue = line.split('icon:')[1]?.trim();
-        if (iconValue) currentService.icon = iconValue;
-      } else if (line.includes('widget:') && currentService) {
-        currentService.widget = { type: '', url: '', key: '' };
-        inWidget = true;
-      } else if (inWidget && currentService && currentService.widget) {
-        if (line.includes('type:')) {
-          const typeValue = line.split('type:')[1]?.trim();
-          if (typeValue) currentService.widget.type = typeValue;
-        } else if (line.includes('url:')) {
-          const urlValue = line.split('url:')[1]?.trim();
-          if (urlValue) currentService.widget.url = urlValue;
-        } else if (line.includes('key:')) {
-          const keyValue = line.split('key:')[1]?.trim();
-          if (keyValue) currentService.widget.key = keyValue;
         }
       }
     }
@@ -1237,9 +1609,16 @@ const HomepageConfigGUI = () => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.name.toLowerCase().endsWith('.yaml') && !file.name.toLowerCase().endsWith('.yml')) {
-      setImportError('Please select a valid YAML file (.yaml or .yml)');
+    // Validate file type - be more flexible
+    const fileName = file.name.toLowerCase();
+    const validExtensions = ['.yaml', '.yml', '.txt'];
+    const isValidType = validExtensions.some(ext => fileName.endsWith(ext)) || 
+                       file.type === 'text/yaml' || 
+                       file.type === 'text/plain' || 
+                       file.type === 'application/x-yaml';
+    
+    if (!isValidType) {
+      setImportError('Please select a YAML file (.yaml, .yml) or text file (.txt). Other formats are not supported.');
       setImportSuccess('');
       event.target.value = '';
       return;
@@ -1266,14 +1645,51 @@ const HomepageConfigGUI = () => {
         if (importedGroups && importedGroups.length > 0) {
           setConfig({ groups: importedGroups });
           setImportError('');
-          setImportSuccess(`Successfully imported ${importedGroups.length} group(s) with ${importedGroups.reduce((total, group) => total + group.services.length, 0)} service(s)`);
-          setTimeout(() => setImportSuccess(''), 5000);
+          
+          // Count services including those in subgroups
+          const totalServices = importedGroups.reduce((total, group) => {
+            const mainServices = group.services?.length || 0;
+            const subgroupServices = (group.subgroups || []).reduce((subTotal, subgroup) => {
+              return subTotal + (subgroup.services?.length || 0);
+            }, 0);
+            return total + mainServices + subgroupServices;
+          }, 0);
+          
+          const totalSubgroups = importedGroups.reduce((total, group) => total + (group.subgroups?.length || 0), 0);
+          
+          // Count services with widgets and ping
+          const servicesWithWidgets = importedGroups.reduce((total, group) => {
+            const mainWithWidgets = (group.services || []).filter(s => s.widget?.type).length;
+            const subWithWidgets = (group.subgroups || []).reduce((subTotal, subgroup) => {
+              return subTotal + (subgroup.services || []).filter(s => s.widget?.type).length;
+            }, 0);
+            return total + mainWithWidgets + subWithWidgets;
+          }, 0);
+          
+          const servicesWithPing = importedGroups.reduce((total, group) => {
+            const mainWithPing = (group.services || []).filter(s => s.ping?.enabled).length;
+            const subWithPing = (group.subgroups || []).reduce((subTotal, subgroup) => {
+              return subTotal + (subgroup.services || []).filter(s => s.ping?.enabled).length;
+            }, 0);
+            return total + mainWithPing + subWithPing;
+          }, 0);
+          
+          let successMessage = `✅ Successfully imported ${importedGroups.length} group(s)`;
+          if (totalSubgroups > 0) successMessage += `, ${totalSubgroups} subgroup(s)`;
+          successMessage += `, and ${totalServices} service(s)`;
+          if (servicesWithWidgets > 0) successMessage += ` (${servicesWithWidgets} with widgets)`;
+          if (servicesWithPing > 0) successMessage += ` (${servicesWithPing} with ping monitoring)`;
+          successMessage += '. Configuration has been normalized and validated.';
+          
+          setImportSuccess(successMessage);
+          setTimeout(() => setImportSuccess(''), 8000);
         } else {
-          setImportError('No valid groups found in the YAML file');
+          setImportError('No valid groups found in the YAML file. Please check the format and try again.');
           setImportSuccess('');
         }
       } catch (error) {
-        setImportError(`Error parsing YAML: ${error.message || 'Unknown error'}`);
+        console.error('Import error:', error);
+        setImportError(`Error parsing YAML: ${error.message || 'Unknown error'}. The file may be corrupted or in an unsupported format.`);
         setImportSuccess('');
       }
     };
@@ -1466,9 +1882,110 @@ const HomepageConfigGUI = () => {
     return yamlStr;
   };
 
+  const generateWidgetsYAML = () => {
+    if (!informationWidgets.widgets || informationWidgets.widgets.length === 0) {
+      return '# No widgets configured yet';
+    }
+    
+    const enabledWidgets = informationWidgets.widgets.filter(w => w.enabled);
+    if (enabledWidgets.length === 0) {
+      return '# No enabled widgets';
+    }
+    
+    let yamlStr = '';
+    
+    // Add each widget configuration
+    enabledWidgets.forEach((widget, index) => {
+      yamlStr += `- type: ${widget.type}\n`;
+      
+      const hasOptions = widget.options && Object.keys(widget.options).length > 0;
+      if (hasOptions) {
+        yamlStr += `  options:\n`;
+        
+        // DateTime widget options
+        if (widget.type === 'datetime') {
+          if (widget.options.format) {
+            yamlStr += `    format:\n`;
+            if (widget.options.format.timeStyle) yamlStr += `      timeStyle: ${widget.options.format.timeStyle}\n`;
+            if (widget.options.format.dateStyle) yamlStr += `      dateStyle: ${widget.options.format.dateStyle}\n`;
+          }
+          if (widget.options.timezone) yamlStr += `    timezone: ${widget.options.timezone}\n`;
+          if (widget.options.showSeconds) yamlStr += `    showSeconds: ${widget.options.showSeconds}\n`;
+        }
+        
+        // Weather widget options
+        else if (widget.type === 'weather') {
+          if (widget.options.location) yamlStr += `    location: ${widget.options.location}\n`;
+          if (widget.options.units) yamlStr += `    units: ${widget.options.units}\n`;
+          if (widget.options.provider) yamlStr += `    provider: ${widget.options.provider}\n`;
+          if (widget.options.show) yamlStr += `    show: ${widget.options.show}\n`;
+          if (widget.options.showForecast) yamlStr += `    showForecast: ${widget.options.showForecast}\n`;
+        }
+        
+        // Resources widget options
+        else if (widget.type === 'resources') {
+          if (widget.options.refresh) yamlStr += `    refresh: ${widget.options.refresh}\n`;
+          if (widget.options.units) yamlStr += `    units: ${widget.options.units}\n`;
+          yamlStr += `    show:\n`;
+          yamlStr += `      cpu: ${widget.options.cpu !== false}\n`;
+          yamlStr += `      memory: ${widget.options.memory !== false}\n`;
+          yamlStr += `      disk: ${widget.options.disk !== false}\n`;
+          if (widget.options.temp) yamlStr += `      temperature: ${widget.options.temp}\n`;
+        }
+        
+        // Search widget options
+        else if (widget.type === 'search') {
+          if (widget.options.placeholder) yamlStr += `    placeholder: "${widget.options.placeholder}"\n`;
+          if (widget.options.provider) yamlStr += `    provider: ${widget.options.provider}\n`;
+          if (widget.options.showIcon !== undefined) yamlStr += `    showIcon: ${widget.options.showIcon}\n`;
+          if (widget.options.autofocus) yamlStr += `    autofocus: ${widget.options.autofocus}\n`;
+        }
+        
+        // Bookmarks widget options
+        else if (widget.type === 'bookmarks') {
+          if (widget.options.limit) yamlStr += `    limit: ${widget.options.limit}\n`;
+          if (widget.options.layout) yamlStr += `    layout: ${widget.options.layout}\n`;
+          if (widget.options.categories) {
+            const categories = widget.options.categories.split(',').map(cat => cat.trim()).filter(cat => cat);
+            if (categories.length > 0) {
+              yamlStr += `    categories:\n`;
+              categories.forEach(category => {
+                yamlStr += `      - ${category}\n`;
+              });
+            }
+          }
+          if (widget.options.showIcons !== undefined) yamlStr += `    showIcons: ${widget.options.showIcons}\n`;
+        }
+        
+        // Greeting widget options
+        else if (widget.type === 'greeting') {
+          if (widget.options.name) yamlStr += `    name: "${widget.options.name}"\n`;
+          if (widget.options.format) yamlStr += `    timeFormat: ${widget.options.format}\n`;
+          if (widget.options.showTime !== undefined) yamlStr += `    showTime: ${widget.options.showTime}\n`;
+          yamlStr += `    messages:\n`;
+          yamlStr += `      morning: "${widget.options.morning || 'Good morning'}"\n`;
+          yamlStr += `      afternoon: "${widget.options.afternoon || 'Good afternoon'}"\n`;
+          yamlStr += `      evening: "${widget.options.evening || 'Good evening'}"\n`;
+          yamlStr += `      night: "${widget.options.night || 'Good night'}"\n`;
+        }
+      }
+      
+      // Add spacing between widgets except for the last one
+      if (index < enabledWidgets.length - 1) {
+        yamlStr += '\n';
+      }
+    });
+    
+    return yamlStr;
+  };
+
   const downloadConfig = () => {
-    const yamlContent = activeTab === 'services' ? generateYAML() : generateSettingsYAML();
-    const fileName = activeTab === 'services' ? 'services.yaml' : 'settings.yaml';
+    const yamlContent = activeTab === 'services' ? generateYAML() : 
+                       activeTab === 'settings' ? generateSettingsYAML() : 
+                       generateWidgetsYAML();
+    const fileName = activeTab === 'services' ? 'services.yaml' : 
+                    activeTab === 'settings' ? 'settings.yaml' : 
+                    'widgets.yaml';
     const blob = new Blob([yamlContent], { type: 'text/yaml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1480,7 +1997,9 @@ const HomepageConfigGUI = () => {
 
   const copyToClipboard = async () => {
     try {
-      const yamlContent = activeTab === 'services' ? generateYAML() : generateSettingsYAML();
+      const yamlContent = activeTab === 'services' ? generateYAML() : 
+                         activeTab === 'settings' ? generateSettingsYAML() : 
+                         generateWidgetsYAML();
       if (!yamlContent) {
         setImportError('No configuration to copy');
         setTimeout(() => setImportError(''), 3000);
@@ -1595,13 +2114,24 @@ const HomepageConfigGUI = () => {
             <Cog className="h-4 w-4" />
             Settings
           </button>
+          <button
+            onClick={() => setActiveTab('widgets')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'widgets'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+            }`}
+          >
+            <Info className="h-4 w-4" />
+            Information Widgets
+          </button>
         </div>
 
         {/* Hidden file input for import */}
         <input
           id="yaml-import"
           type="file"
-          accept=".yaml,.yml"
+          accept=".yaml,.yml,.txt,text/yaml,text/plain,application/x-yaml"
           onChange={importConfig}
           className="hidden"
         />
@@ -1642,7 +2172,7 @@ const HomepageConfigGUI = () => {
               {activeTab === 'services' ? 'Services Configuration' : 'Settings Configuration'}
             </h2>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
               onClick={triggerImport}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
@@ -1662,9 +2192,50 @@ const HomepageConfigGUI = () => {
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
             >
               <Download className="h-4 w-4" />
-              Download {activeTab === 'services' ? 'services.yaml' : 'settings.yaml'}
+              Download {activeTab === 'services' ? 'services.yaml' : activeTab === 'settings' ? 'settings.yaml' : 'widgets.yaml'}
             </button>
+            
+            {/* Live Update Buttons */}
+            {liveUpdateConfig.enabled && (
+              <>
+                <div className="h-6 w-px bg-slate-600"></div>
+                <button
+                  onClick={() => loadConfigFromServer(activeTab)}
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:text-purple-400 rounded-lg transition-colors"
+                  title="Load configuration from server"
+                >
+                  <CloudDownload className="h-4 w-4" />
+                  {isLoading ? 'Loading...' : 'Load from Server'}
+                </button>
+                <button
+                  onClick={() => saveConfigToServer(activeTab)}
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 disabled:text-orange-400 rounded-lg transition-colors"
+                  title="Save configuration to server"
+                >
+                  <CloudUpload className="h-4 w-4" />
+                  {isLoading ? 'Saving...' : 'Save to Server'}
+                </button>
+              </>
+            )}
           </div>
+          
+          {/* Live Update Status */}
+          {liveUpdateConfig.status !== 'unknown' && (
+            <div className="flex items-center gap-2 text-sm mt-2">
+              <div className={`w-2 h-2 rounded-full ${
+                liveUpdateConfig.status === 'connected' ? 'bg-green-500' : 
+                liveUpdateConfig.status === 'error' ? 'bg-yellow-500' : 'bg-red-500'
+              }`}></div>
+              <span className="text-slate-400">
+                Live Updates: {liveUpdateConfig.enabled ? 
+                  `Enabled (${liveUpdateConfig.configPath})` : 
+                  'Disabled'
+                }
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Main Content */}
@@ -2016,6 +2587,28 @@ const HomepageConfigGUI = () => {
                           >
                             <Plus className="h-3 w-3" />
                           </button>
+                          <div className="flex gap-1">
+                            <select
+                              value={selectedQuickAdd[`${group.id}_${subgroup.id}`] || ''}
+                              onChange={(e) => setSelectedQuickAdd(prev => ({ ...prev, [`${group.id}_${subgroup.id}`]: e.target.value }))}
+                              className="bg-slate-600 text-white text-xs px-1 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                            >
+                              <option value="">Quick add...</option>
+                              {Object.entries(commonServices)
+                                .sort(([,a], [,b]) => a.name.localeCompare(b.name))
+                                .map(([key, service]) => (
+                                  <option key={key} value={key}>{service.name}</option>
+                                ))}
+                            </select>
+                            <button
+                              onClick={() => quickAddServiceToSubgroup(group.id, subgroup.id)}
+                              disabled={!selectedQuickAdd[`${group.id}_${subgroup.id}`]}
+                              className="px-1 py-1 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:text-slate-400 rounded transition-colors"
+                              title="Add selected service with defaults"
+                            >
+                              Add
+                            </button>
+                          </div>
                           <button
                             onClick={() => deleteSubgroup(group.id, subgroup.id)}
                             className="p-1 text-red-400 hover:text-red-300 transition-colors text-xs"
@@ -2028,20 +2621,182 @@ const HomepageConfigGUI = () => {
                       
                       {/* Subgroup Services */}
                       <div className="space-y-2">
-                        {subgroup.services.map((service) => (
-                          <div key={service.id} className="bg-slate-600 rounded p-2 text-sm">
-                            <div className="flex items-center justify-between">
+                        {subgroup.services.map((service, serviceIndex) => (
+                          <div
+                            key={service.id}
+                            className="bg-slate-600 rounded p-3 border border-slate-500 hover:border-slate-400 transition-colors"
+                          >
+                            <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <span className="text-blue-200">{service.name}</span>
-                                <span className="text-xs text-slate-400">({service.url})</span>
+                                <span className="text-xs text-slate-400 font-mono bg-slate-700 px-2 py-1 rounded">
+                                  {serviceIndex + 1}
+                                </span>
+                                {editingService === service.id ? (
+                                  <input
+                                    type="text"
+                                    value={service.name}
+                                    onChange={(e) => updateService(service.id, { name: e.target.value })}
+                                    onBlur={() => setEditingService(null)}
+                                    onKeyDown={(e) => e.key === 'Enter' && setEditingService(null)}
+                                    className="bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-sm"
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <span
+                                    className="font-medium cursor-pointer hover:text-blue-300 transition-colors text-sm"
+                                    onClick={() => setEditingService(service.id)}
+                                  >
+                                    {service.name}
+                                  </span>
+                                )}
                               </div>
                               <button
-                                onClick={() => setEditingService(service.id)}
-                                className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
-                                title="Edit service"
+                                onClick={() => deleteService(service.id)}
+                                className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                                title="Delete service"
                               >
-                                <Edit3 className="h-3 w-3" />
+                                <Trash2 className="h-3 w-3" />
                               </button>
+                            </div>
+
+                            {/* Service Form Fields - Same as main group services but with smaller styling */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-xs">Service URL</label>
+                                <input
+                                  type="url"
+                                  value={service.href || ''}
+                                  onChange={(e) => updateService(service.id, { href: e.target.value })}
+                                  placeholder="http://localhost:8080"
+                                  className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-xs">Icon</label>
+                                <input
+                                  type="text"
+                                  value={service.icon || ''}
+                                  onChange={(e) => updateService(service.id, { icon: e.target.value })}
+                                  placeholder="service-name or mdi-icon"
+                                  className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="mt-2">
+                              <label className="block text-slate-300 mb-1 text-xs">Description</label>
+                              <input
+                                type="text"
+                                value={service.description || ''}
+                                onChange={(e) => updateService(service.id, { description: e.target.value })}
+                                placeholder="Brief description of the service"
+                                className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                              />
+                            </div>
+
+                            {/* Widget Configuration */}
+                            <div className="mt-3 pt-2 border-t border-slate-500">
+                              <label className="block text-slate-300 mb-1 text-xs font-medium">Widget Configuration (Optional)</label>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-xs text-slate-400 mb-1">Widget Type</label>
+                                  <select
+                                    value={service.widget?.type || ''}
+                                    onChange={(e) => updateService(service.id, { 
+                                      widget: { ...(service.widget || {}), type: e.target.value }
+                                    })}
+                                    className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                  >
+                                    <option value="">Select widget type</option>
+                                    {commonWidgetTypes.sort().map(type => (
+                                      <option key={type} value={type}>{type}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-slate-400 mb-1">Widget URL</label>
+                                  <input
+                                    type="text"
+                                    value={service.widget?.url || ''}
+                                    onChange={(e) => updateService(service.id, { 
+                                      widget: { ...(service.widget || {}), url: e.target.value }
+                                    })}
+                                    placeholder="http://localhost:8080"
+                                    className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                  />
+                                </div>
+                              </div>
+                              {service.widget?.type && (
+                                <div className="mt-2">
+                                  <label className="block text-xs text-slate-400 mb-1">API Key</label>
+                                  <input
+                                    type="text"
+                                    value={service.widget.key || ''}
+                                    onChange={(e) => updateService(service.id, { 
+                                      widget: { ...service.widget, key: e.target.value }
+                                    })}
+                                    placeholder="API Key"
+                                    className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Ping Configuration */}
+                            <div className="mt-3 pt-2 border-t border-slate-500">
+                              <label className="block text-slate-300 mb-1 text-xs font-medium">Ping Configuration (Optional)</label>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-xs text-slate-400 mb-1">Host/URL to ping</label>
+                                  <input
+                                    type="text"
+                                    value={service.ping?.url || ''}
+                                    onChange={(e) => updateService(service.id, { 
+                                      ping: { ...(service.ping || {}), url: e.target.value }
+                                    })}
+                                    placeholder="example.com or http://localhost:8080"
+                                    className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-slate-400 mb-1">Interval (seconds)</label>
+                                  <input
+                                    type="number"
+                                    value={service.ping?.interval || 30}
+                                    onChange={(e) => updateService(service.id, { 
+                                      ping: { ...(service.ping || {}), interval: parseInt(e.target.value) || 30 }
+                                    })}
+                                    placeholder="30"
+                                    min="10"
+                                    max="3600"
+                                    className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 mt-2">
+                                <label className="flex items-center gap-2 text-xs text-slate-400">
+                                  <input
+                                    type="checkbox"
+                                    checked={service.ping?.enabled || false}
+                                    onChange={(e) => updateService(service.id, { 
+                                      ping: { ...(service.ping || {}), enabled: e.target.checked }
+                                    })}
+                                    className="rounded"
+                                  />
+                                  Enable ping monitoring
+                                </label>
+                                <label className="flex items-center gap-2 text-xs text-slate-400">
+                                  <input
+                                    type="checkbox"
+                                    checked={service.ping?.public || false}
+                                    onChange={(e) => updateService(service.id, { 
+                                      ping: { ...(service.ping || {}), public: e.target.checked }
+                                    })}
+                                    className="rounded"
+                                  />
+                                  Show publicly
+                                </label>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -2157,7 +2912,7 @@ const HomepageConfigGUI = () => {
             </div>
           </div>
         </div>
-        ) : (
+        ) : activeTab === 'settings' ? (
           /* Settings Configuration */
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
             {/* Settings Form */}
@@ -2411,6 +3166,627 @@ const HomepageConfigGUI = () => {
                   <li>• <strong>Quick Launch:</strong> Configures search behavior</li>
                   <li>• <strong>Weather Providers:</strong> API keys for weather widgets</li>
                 </ul>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Information Widgets Configuration */
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            {/* Widgets Form */}
+            <div className="space-y-6">
+              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                <h3 className="text-lg font-medium mb-4">Information Widgets</h3>
+                <div className="space-y-4">
+                  <p className="text-slate-300 text-sm mb-4">
+                    Configure information widgets that display system information, weather, time, and other data on your homepage.
+                  </p>
+                  
+                  {informationWidgets.widgets.map((widget, index) => (
+                    <div key={widget.id} className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-slate-400 font-mono bg-slate-800 px-2 py-1 rounded">
+                            {index + 1}
+                          </span>
+                          <h4 className="font-medium text-slate-200">
+                            {widget.type.charAt(0).toUpperCase() + widget.type.slice(1)} Widget
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={widget.enabled}
+                              onChange={(e) => {
+                                const updatedWidgets = [...informationWidgets.widgets];
+                                updatedWidgets[index].enabled = e.target.checked;
+                                setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                              }}
+                              className="rounded"
+                            />
+                            <span className="text-slate-300">Enabled</span>
+                          </label>
+                          <button
+                            onClick={() => {
+                              const updatedWidgets = informationWidgets.widgets.filter((_, i) => i !== index);
+                              setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                            }}
+                            className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                            title="Remove widget"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-slate-300 mb-1 text-sm">Widget Type</label>
+                          <select
+                            value={widget.type}
+                            onChange={(e) => {
+                              const updatedWidgets = [...informationWidgets.widgets];
+                              updatedWidgets[index].type = e.target.value;
+                              setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                            }}
+                            className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                          >
+                            <option value="datetime">Date & Time</option>
+                            <option value="weather">Weather</option>
+                            <option value="resources">System Resources</option>
+                            <option value="search">Quick Search</option>
+                            <option value="bookmarks">Bookmarks</option>
+                            <option value="greeting">Greeting</option>
+                          </select>
+                        </div>
+                        
+                        {widget.type === 'datetime' && (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Time Style</label>
+                                <select
+                                  value={widget.options.format?.timeStyle || 'short'}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.format = {
+                                      ...updatedWidgets[index].options.format,
+                                      timeStyle: e.target.value
+                                    };
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                >
+                                  <option value="short">Short (3:30 PM)</option>
+                                  <option value="medium">Medium (3:30:45 PM)</option>
+                                  <option value="long">Long (3:30:45 PM PST)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Date Style</label>
+                                <select
+                                  value={widget.options.format?.dateStyle || 'short'}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.format = {
+                                      ...updatedWidgets[index].options.format,
+                                      dateStyle: e.target.value
+                                    };
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                >
+                                  <option value="short">Short (1/1/23)</option>
+                                  <option value="medium">Medium (Jan 1, 2023)</option>
+                                  <option value="long">Long (January 1, 2023)</option>
+                                  <option value="full">Full (Sunday, January 1, 2023)</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-slate-300 mb-1 text-sm">Timezone</label>
+                              <input
+                                type="text"
+                                value={widget.options.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone}
+                                onChange={(e) => {
+                                  const updatedWidgets = [...informationWidgets.widgets];
+                                  updatedWidgets[index].options.timezone = e.target.value;
+                                  setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                }}
+                                placeholder="America/New_York"
+                                className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                              />
+                            </div>
+                            <div>
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={widget.options.showSeconds || false}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.showSeconds = e.target.checked;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="rounded"
+                                />
+                                <span className="text-slate-300">Show seconds</span>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {widget.type === 'weather' && (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Location</label>
+                                <input
+                                  type="text"
+                                  value={widget.options.location || ''}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.location = e.target.value;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  placeholder="City, State or Lat,Lon"
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Units</label>
+                                <select
+                                  value={widget.options.units || 'metric'}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.units = e.target.value;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                >
+                                  <option value="metric">Metric (°C)</option>
+                                  <option value="imperial">Imperial (°F)</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Provider</label>
+                                <select
+                                  value={widget.options.provider || 'openweathermap'}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.provider = e.target.value;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                >
+                                  <option value="openweathermap">OpenWeatherMap</option>
+                                  <option value="weatherapi">WeatherAPI</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Show</label>
+                                <select
+                                  value={widget.options.show || 'both'}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.show = e.target.value;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                >
+                                  <option value="both">Current & Forecast</option>
+                                  <option value="current">Current Only</option>
+                                  <option value="forecast">Forecast Only</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={widget.options.showForecast || false}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.showForecast = e.target.checked;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="rounded"
+                                />
+                                <span className="text-slate-300">Show 5-day forecast</span>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        {widget.type === 'resources' && (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Refresh Interval (seconds)</label>
+                                <input
+                                  type="number"
+                                  value={widget.options.refresh || 30}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.refresh = parseInt(e.target.value) || 30;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  min="5"
+                                  max="300"
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Display Units</label>
+                                <select
+                                  value={widget.options.units || 'bytes'}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.units = e.target.value;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                >
+                                  <option value="bytes">Bytes (GB, TB)</option>
+                                  <option value="percentage">Percentage (%)</option>
+                                  <option value="both">Both</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-slate-300 text-sm font-medium">Show Resources:</label>
+                              <div className="grid grid-cols-2 gap-2">
+                                <label className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={widget.options.cpu !== false}
+                                    onChange={(e) => {
+                                      const updatedWidgets = [...informationWidgets.widgets];
+                                      updatedWidgets[index].options.cpu = e.target.checked;
+                                      setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                    }}
+                                    className="rounded"
+                                  />
+                                  <span className="text-slate-300">CPU Usage</span>
+                                </label>
+                                <label className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={widget.options.memory !== false}
+                                    onChange={(e) => {
+                                      const updatedWidgets = [...informationWidgets.widgets];
+                                      updatedWidgets[index].options.memory = e.target.checked;
+                                      setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                    }}
+                                    className="rounded"
+                                  />
+                                  <span className="text-slate-300">Memory Usage</span>
+                                </label>
+                                <label className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={widget.options.disk !== false}
+                                    onChange={(e) => {
+                                      const updatedWidgets = [...informationWidgets.widgets];
+                                      updatedWidgets[index].options.disk = e.target.checked;
+                                      setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                    }}
+                                    className="rounded"
+                                  />
+                                  <span className="text-slate-300">Disk Usage</span>
+                                </label>
+                                <label className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={widget.options.temp || false}
+                                    onChange={(e) => {
+                                      const updatedWidgets = [...informationWidgets.widgets];
+                                      updatedWidgets[index].options.temp = e.target.checked;
+                                      setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                    }}
+                                    className="rounded"
+                                  />
+                                  <span className="text-slate-300">Temperature</span>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {widget.type === 'search' && (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Placeholder Text</label>
+                                <input
+                                  type="text"
+                                  value={widget.options.placeholder || 'Search...'}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.placeholder = e.target.value;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Default Provider</label>
+                                <select
+                                  value={widget.options.provider || 'google'}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.provider = e.target.value;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                >
+                                  <option value="google">Google</option>
+                                  <option value="bing">Bing</option>
+                                  <option value="duckduckgo">DuckDuckGo</option>
+                                  <option value="custom">Custom</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={widget.options.showIcon !== false}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.showIcon = e.target.checked;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="rounded"
+                                />
+                                <span className="text-slate-300">Show search icon</span>
+                              </label>
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={widget.options.autofocus || false}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.autofocus = e.target.checked;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="rounded"
+                                />
+                                <span className="text-slate-300">Auto-focus on load</span>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        {widget.type === 'bookmarks' && (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Max Items</label>
+                                <input
+                                  type="number"
+                                  value={widget.options.limit || 10}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.limit = parseInt(e.target.value) || 10;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  min="1"
+                                  max="50"
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Layout</label>
+                                <select
+                                  value={widget.options.layout || 'list'}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.layout = e.target.value;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                >
+                                  <option value="list">Vertical List</option>
+                                  <option value="grid">Grid</option>
+                                  <option value="compact">Compact</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-slate-300 mb-2 text-sm">Bookmark Categories</label>
+                              <textarea
+                                value={widget.options.categories || ''}
+                                onChange={(e) => {
+                                  const updatedWidgets = [...informationWidgets.widgets];
+                                  updatedWidgets[index].options.categories = e.target.value;
+                                  setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                }}
+                                placeholder="Work, Personal, Development (comma-separated)"
+                                className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all h-20 resize-none"
+                              />
+                            </div>
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={widget.options.showIcons !== false}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.showIcons = e.target.checked;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="rounded"
+                                />
+                                <span className="text-slate-300">Show bookmark icons</span>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        {widget.type === 'greeting' && (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">User Name</label>
+                                <input
+                                  type="text"
+                                  value={widget.options.name || ''}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.name = e.target.value;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  placeholder="Your name"
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-slate-300 mb-1 text-sm">Time Format</label>
+                                <select
+                                  value={widget.options.format || '12'}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.format = e.target.value;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                >
+                                  <option value="12">12-hour (AM/PM)</option>
+                                  <option value="24">24-hour</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-slate-300 mb-2 text-sm">Custom Messages</label>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-slate-400 mb-1 text-xs">Morning (6-12)</label>
+                                  <input
+                                    type="text"
+                                    value={widget.options.morning || 'Good morning'}
+                                    onChange={(e) => {
+                                      const updatedWidgets = [...informationWidgets.widgets];
+                                      updatedWidgets[index].options.morning = e.target.value;
+                                      setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                    }}
+                                    className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-slate-400 mb-1 text-xs">Afternoon (12-17)</label>
+                                  <input
+                                    type="text"
+                                    value={widget.options.afternoon || 'Good afternoon'}
+                                    onChange={(e) => {
+                                      const updatedWidgets = [...informationWidgets.widgets];
+                                      updatedWidgets[index].options.afternoon = e.target.value;
+                                      setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                    }}
+                                    className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-slate-400 mb-1 text-xs">Evening (17-22)</label>
+                                  <input
+                                    type="text"
+                                    value={widget.options.evening || 'Good evening'}
+                                    onChange={(e) => {
+                                      const updatedWidgets = [...informationWidgets.widgets];
+                                      updatedWidgets[index].options.evening = e.target.value;
+                                      setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                    }}
+                                    className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-slate-400 mb-1 text-xs">Night (22-6)</label>
+                                  <input
+                                    type="text"
+                                    value={widget.options.night || 'Good night'}
+                                    onChange={(e) => {
+                                      const updatedWidgets = [...informationWidgets.widgets];
+                                      updatedWidgets[index].options.night = e.target.value;
+                                      setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                    }}
+                                    className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={widget.options.showTime !== false}
+                                  onChange={(e) => {
+                                    const updatedWidgets = [...informationWidgets.widgets];
+                                    updatedWidgets[index].options.showTime = e.target.checked;
+                                    setInformationWidgets({ ...informationWidgets, widgets: updatedWidgets });
+                                  }}
+                                  className="rounded"
+                                />
+                                <span className="text-slate-300">Show current time</span>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <button
+                    onClick={() => {
+                      const newWidget = {
+                        id: `widget${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+                        type: 'datetime',
+                        enabled: true,
+                        options: {
+                          format: {
+                            timeStyle: 'short',
+                            dateStyle: 'short'
+                          }
+                        }
+                      };
+                      setInformationWidgets({
+                        ...informationWidgets,
+                        widgets: [...informationWidgets.widgets, newWidget]
+                      });
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-sm w-full justify-center"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Information Widget
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Widgets Preview */}
+            <div className="space-y-6">
+              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                <h3 className="text-lg font-medium mb-4">YAML Preview</h3>
+                <pre className="bg-slate-900 p-4 rounded text-sm text-green-400 font-mono overflow-x-auto max-h-96">
+                  <code>{generateWidgetsYAML()}</code>
+                </pre>
+              </div>
+
+              {/* Widgets Tips */}
+              <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-800">
+                <h3 className="font-semibold text-blue-300 mb-2">Information Widgets Configuration</h3>
+                <div className="text-sm text-blue-200 space-y-2">
+                  <div><strong>Date & Time:</strong> Custom time/date formats, timezone, show seconds</div>
+                  <div><strong>Weather:</strong> Location, units, provider (OpenWeatherMap/WeatherAPI), forecast options</div>
+                  <div><strong>System Resources:</strong> Refresh interval, display units, CPU/memory/disk/temperature monitoring</div>
+                  <div><strong>Search:</strong> Custom placeholder, search provider, icons, auto-focus</div>
+                  <div><strong>Bookmarks:</strong> Item limits, layout styles, categories, icon display</div>
+                  <div><strong>Greeting:</strong> Personalized name, time format, custom messages for different times of day</div>
+                  <div className="text-xs text-blue-300 mt-3 p-2 bg-blue-800/30 rounded">
+                    <strong>Pro Tip:</strong> Enable/disable widgets individually and configure each with specific options. 
+                    The YAML preview shows your complete configuration ready for Homepage.
+                  </div>
+                </div>
               </div>
             </div>
           </div>

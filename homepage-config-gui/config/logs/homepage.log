@@ -1,0 +1,25 @@
+[2025-08-06T11:26:50.644Z] info: kubernetes.yaml was copied to the config folder
+[2025-08-06T11:29:24.255Z] info: docker.yaml was copied to the config folder
+[2025-08-06T11:29:24.256Z] info: bookmarks.yaml was copied to the config folder
+[2025-08-06T11:29:24.257Z] info: proxmox.yaml was copied to the config folder
+[2025-08-06T11:29:24.269Z] info: widgets.yaml was copied to the config folder
+[2025-08-06T11:29:24.270Z] info: custom.css was copied to the config folder
+[2025-08-06T11:29:24.271Z] info: custom.js was copied to the config folder
+[2025-08-06T11:29:39.714Z] error: <httpProxy> Error calling http://localhost:9000/api/v3/core/users/...
+[2025-08-06T11:29:39.716Z] error: <httpProxy> [ 500, [AggregateError: ] { code: 'ECONNREFUSED' } ]
+[2025-08-06T11:29:39.716Z] error: <credentialedProxyHandler> HTTP Error 500 calling http://localhost:9000/api/v3/core/users/?page_size=1
+[2025-08-06T11:29:39.716Z] error: <httpProxy> Error calling http://localhost:9000/api/v3/events/events/per_month/...
+[2025-08-06T11:29:39.717Z] error: <httpProxy> [ 500, [AggregateError: ] { code: 'ECONNREFUSED' } ]
+[2025-08-06T11:29:39.717Z] error: <credentialedProxyHandler> HTTP Error 500 calling http://localhost:9000/api/v3/events/events/per_month/?action=login
+[2025-08-06T11:29:39.718Z] error: <httpProxy> Error calling http://localhost:9000/api/v3/events/events/per_month/...
+[2025-08-06T11:29:39.718Z] error: <httpProxy> [ 500, [AggregateError: ] { code: 'ECONNREFUSED' } ]
+[2025-08-06T11:29:39.719Z] error: <credentialedProxyHandler> HTTP Error 500 calling http://localhost:9000/api/v3/events/events/per_month/?action=login_failed
+[2025-08-06T11:29:49.979Z] error: <httpProxy> Error calling http://localhost:9000/api/v3/core/users/...
+[2025-08-06T11:29:49.979Z] error: <httpProxy> [ 500, [AggregateError: ] { code: 'ECONNREFUSED' } ]
+[2025-08-06T11:29:49.980Z] error: <credentialedProxyHandler> HTTP Error 500 calling http://localhost:9000/api/v3/core/users/?page_size=1
+[2025-08-06T11:29:49.995Z] error: <httpProxy> Error calling http://localhost:9000/api/v3/events/events/per_month/...
+[2025-08-06T11:29:49.996Z] error: <httpProxy> [ 500, [AggregateError: ] { code: 'ECONNREFUSED' } ]
+[2025-08-06T11:29:49.996Z] error: <credentialedProxyHandler> HTTP Error 500 calling http://localhost:9000/api/v3/events/events/per_month/?action=login
+[2025-08-06T11:29:49.996Z] error: <httpProxy> Error calling http://localhost:9000/api/v3/events/events/per_month/...
+[2025-08-06T11:29:49.997Z] error: <httpProxy> [ 500, [AggregateError: ] { code: 'ECONNREFUSED' } ]
+[2025-08-06T11:29:49.997Z] error: <credentialedProxyHandler> HTTP Error 500 calling http://localhost:9000/api/v3/events/events/per_month/?action=login_failed
