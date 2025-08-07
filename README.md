@@ -42,7 +42,7 @@ A comprehensive web-based GUI for creating, editing, and managing [Homepage](htt
 
 **Full Stack Deployment (Homepage + Config Editor):**
 ```bash
-git clone https://github.com/your-username/homepage-config-editor.git
+git clone https://github.com/hoiber/homepage-config-editor.git
 cd homepage-config-editor
 docker-compose --profile full up -d --build
 ```
@@ -238,7 +238,7 @@ GET  /api/config/{type}/backups    # List backup files
 ### Local Development Setup
 ```bash
 # Clone repository
-git clone https://github.com/your-username/homepage-config-editor.git
+git clone https://github.com/hoiber/homepage-config-editor.git
 cd homepage-config-editor/homepage-config-gui
 
 # Install dependencies
@@ -352,18 +352,18 @@ docker logs homepage
 
 ## 📊 Project Stats
 
-![Lines of Code](https://img.shields.io/tokei/lines/github/your-username/homepage-config-editor)
-![Repository Size](https://img.shields.io/github/repo-size/your-username/homepage-config-editor)
-![Last Commit](https://img.shields.io/github/last-commit/your-username/homepage-config-editor)
-![Issues](https://img.shields.io/github/issues/your-username/homepage-config-editor)
-![License](https://img.shields.io/github/license/your-username/homepage-config-editor)
+![Lines of Code](https://img.shields.io/tokei/lines/github/hoiber/homepage-config-editor)
+![Repository Size](https://img.shields.io/github/repo-size/hoiber/homepage-config-editor)
+![Last Commit](https://img.shields.io/github/last-commit/hoiber/homepage-config-editor)
+![Issues](https://img.shields.io/github/issues/hoiber/homepage-config-editor)
+![License](https://img.shields.io/github/license/hoiber/homepage-config-editor)
 
 ---
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-username/homepage-config-editor/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/homepage-config-editor/discussions)
+- **Issues**: [GitHub Issues](https://github.com/hoiber/homepage-config-editor/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/hoiber/homepage-config-editor/discussions)
 - **Homepage Community**: [Homepage Discord](https://discord.gg/homepage)
 
 ---
@@ -372,6 +372,6 @@ docker logs homepage
 
 **Made with ❤️ for the Homepage community**
 
-[⭐ Star this repo](https://github.com/your-username/homepage-config-editor) | [🐛 Report Bug](https://github.com/your-username/homepage-config-editor/issues) | [💡 Request Feature](https://github.com/your-username/homepage-config-editor/issues)
+[⭐ Star this repo](https://github.com/hoiber/homepage-config-editor) | [🐛 Report Bug](https://github.com/hoiber/homepage-config-editor/issues) | [💡 Request Feature](https://github.com/hoiber/homepage-config-editor/issues)
 
 </div>

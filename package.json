@@ -22,7 +22,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/homepage-config-editor.git"
+    "url": "git+https://github.com/hoiber/homepage-config-editor.git"
   },
   "keywords": [
     "homepage",
@@ -39,9 +39,9 @@
   "author": "Your Name",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/your-username/homepage-config-editor/issues"
+    "url": "https://github.com/hoiber/homepage-config-editor/issues"
   },
-  "homepage": "https://github.com/your-username/homepage-config-editor#readme",
+  "homepage": "https://github.com/hoiber/homepage-config-editor#readme",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"

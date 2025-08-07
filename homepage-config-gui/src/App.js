@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Download, Trash2, Copy, Home, Settings, Upload, ChevronUp, ChevronDown, List, Cog, Info, CloudUpload, CloudDownload } from 'lucide-react';
+import { Plus, Download, Trash2, Copy, Home, Settings, Upload, ChevronUp, ChevronDown, ChevronRight, List, Cog, Info, CloudUpload, CloudDownload } from 'lucide-react';
 
 const HomepageConfigGUI = () => {
   const [activeTab, setActiveTab] = useState('services');
@@ -318,7 +318,7 @@ const HomepageConfigGUI = () => {
       href: 'https://localhost:8443',
       description: 'Network management',
       icon: 'unifi',
-      widget: { type: 'unifi', url: 'https://localhost:8443', key: 'your-username-password' }
+      widget: { type: 'unifi', url: 'https://localhost:8443', key: 'hoiber-password' }
     },
     opnsense: {
       name: 'OPNsense',
@@ -1000,6 +1000,7 @@ const HomepageConfigGUI = () => {
 
   const [editingGroup, setEditingGroup] = useState(null);
   const [editingService, setEditingService] = useState(null);
+  const [collapsedServices, setCollapsedServices] = useState({});
   
   // Information widgets configuration
   const [informationWidgets, setInformationWidgets] = useState({
@@ -1357,6 +1358,13 @@ const HomepageConfigGUI = () => {
           services: subgroup.services.filter(service => service.id !== serviceId)
         }))
       }))
+    }));
+  };
+
+  const toggleServiceCollapse = (serviceId) => {
+    setCollapsedServices(prev => ({
+      ...prev,
+      [serviceId]: !prev[serviceId]
     }));
   };
 
@@ -2357,6 +2365,17 @@ const HomepageConfigGUI = () => {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => toggleServiceCollapse(service.id)}
+                            className="p-1 text-slate-400 hover:text-slate-200 rounded transition-all"
+                            title={collapsedServices[service.id] ? "Expand service" : "Collapse service"}
+                          >
+                            <ChevronRight 
+                              className={`h-4 w-4 transition-transform duration-200 ${
+                                collapsedServices[service.id] ? 'rotate-0' : 'rotate-90'
+                              }`} 
+                            />
+                          </button>
                           <span className="text-xs text-slate-400 font-mono bg-slate-800 px-2 py-1 rounded">
                             {index + 1}
                           </span>
@@ -2419,6 +2438,8 @@ const HomepageConfigGUI = () => {
                         </div>
                       </div>
                       
+                      {!collapsedServices[service.id] && (
+                      <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                         <div>
                           <label className="block text-slate-300 mb-1">URL</label>
@@ -2552,6 +2573,8 @@ const HomepageConfigGUI = () => {
                           </div>
                         </div>
                       </div>
+                      </>
+                      )}
                     </div>
                   ))}
 
@@ -2628,6 +2651,17 @@ const HomepageConfigGUI = () => {
                           >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => toggleServiceCollapse(service.id)}
+                                  className="p-1 text-slate-400 hover:text-slate-200 rounded transition-all"
+                                  title={collapsedServices[service.id] ? "Expand service" : "Collapse service"}
+                                >
+                                  <ChevronRight 
+                                    className={`h-3 w-3 transition-transform duration-200 ${
+                                      collapsedServices[service.id] ? 'rotate-0' : 'rotate-90'
+                                    }`} 
+                                  />
+                                </button>
                                 <span className="text-xs text-slate-400 font-mono bg-slate-700 px-2 py-1 rounded">
                                   {serviceIndex + 1}
                                 </span>
@@ -2659,6 +2693,8 @@ const HomepageConfigGUI = () => {
                               </button>
                             </div>
 
+                            {!collapsedServices[service.id] && (
+                            <>
                             {/* Service Form Fields - Same as main group services but with smaller styling */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                               <div>
@@ -2798,6 +2834,8 @@ const HomepageConfigGUI = () => {
                                 </label>
                               </div>
                             </div>
+                            </>
+                            )}
                           </div>
                         ))}
                         {subgroup.services.length === 0 && (
