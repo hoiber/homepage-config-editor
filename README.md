@@ -6,6 +6,8 @@ A comprehensive web-based GUI for creating, editing, and managing [Homepage](htt
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker)
 ![Live Updates](https://img.shields.io/badge/Live-Updates-green?style=for-the-badge)
 
+![CleanShot 2025-08-07](CleanShot%202025-08-07.png)
+
 ## 🌟 Features
 
 ### 🎯 **Core Functionality**
