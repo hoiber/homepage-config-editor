@@ -85,6 +85,13 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
+    # Install cosign for signing (optional)
+    - name: Install cosign
+      if: github.event_name != 'pull_request'
+      uses: sigstore/cosign-installer@v3.1.1
+      with:
+        cosign-release: 'v2.1.1'
+
     # Sign the resulting Docker image digest except on PRs.
     - name: Sign the published Docker image
       if: ${{ github.event_name != 'pull_request' }}
