@@ -1,4 +1,4 @@
-name: Docker Final Build
+name: Simple Docker Build
 
 on:
   workflow_dispatch:
@@ -6,26 +6,28 @@ on:
     branches: [ "main" ]
 
 jobs:
-  docker-hub-build:
+  build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: homepage-config-gui
+        
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js 18
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
         cache-dependency-path: homepage-config-gui/package-lock.json
 
-    - name: Install dependencies and build
-      working-directory: homepage-config-gui
-      run: |
-        npm config set fund false
-        npm config set audit false
-        npm ci --prefer-offline
-        npm run build
+    - name: Install dependencies
+      run: npm ci --no-audit --no-fund
+
+    - name: Build React app
+      run: npm run build
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -36,7 +38,7 @@ jobs:
         username: hoiber
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Build and push Docker image
+    - name: Build and push
       uses: docker/build-push-action@v5
       with:
         context: ./homepage-config-gui
@@ -45,11 +47,6 @@ jobs:
         tags: |
           hoiber/homepage-config-editor:latest
           hoiber/homepage-config-editor:static
-        labels: |
-          org.opencontainers.image.title=Homepage Config Editor
-          org.opencontainers.image.description=Web-based GUI for Homepage dashboard configuration
-          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          org.opencontainers.image.revision=${{ github.sha }}
         file-inline: |
           FROM nginx:alpine
           COPY build /usr/share/nginx/html
