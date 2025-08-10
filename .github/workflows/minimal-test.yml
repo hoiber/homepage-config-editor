@@ -1,0 +1,25 @@
+name: Minimal Test Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-only:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build static (AMD64 only, no push)
+      uses: docker/build-push-action@v5
+      with:
+        context: ./homepage-config-gui
+        file: ./homepage-config-gui/Dockerfile.static
+        platforms: linux/amd64
+        push: false
+        tags: hoiber/homepage-config-editor:static-test
