@@ -1,0 +1,52 @@
+name: Minimal Dependencies Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  minimal-build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Check package.json size
+      run: |
+        echo "=== Package.json content ==="
+        cat homepage-config-gui/package.json
+        echo "=== Dependencies count ==="
+        cat homepage-config-gui/package.json | jq '.dependencies | length'
+        cat homepage-config-gui/package.json | jq '.devDependencies | length'
+
+    - name: Setup Node.js locally first
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: homepage-config-gui/package-lock.json
+
+    - name: Install dependencies locally
+      working-directory: homepage-config-gui
+      run: |
+        npm config set fund false
+        npm config set audit false
+        npm config set maxsockets 3
+        npm ci --prefer-offline --no-audit
+
+    - name: Build locally  
+      working-directory: homepage-config-gui
+      run: npm run build
+
+    - name: Build Docker with pre-built assets
+      uses: docker/build-push-action@v5
+      with:
+        context: ./homepage-config-gui
+        platforms: linux/amd64
+        push: false
+        tags: test:pre-built
+        file-inline: |
+          FROM nginx:alpine
+          COPY build /usr/share/nginx/html
+          COPY nginx.conf /etc/nginx/nginx.conf
+          EXPOSE 80
+          CMD ["nginx", "-g", "daemon off;"]
