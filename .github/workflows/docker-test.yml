@@ -13,8 +13,10 @@ jobs:
         include:
           - dockerfile: ./homepage-config-gui/Dockerfile
             name: "Full Server"
+            tag: "full-server"
           - dockerfile: ./homepage-config-gui/Dockerfile.static
             name: "Static Build"
+            tag: "static-build"
 
     steps:
     - name: Checkout repository
@@ -30,6 +32,6 @@ jobs:
         file: ${{ matrix.dockerfile }}
         platforms: linux/amd64
         push: false
-        tags: test:${{ matrix.name }}
+        tags: test:${{ matrix.tag }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
