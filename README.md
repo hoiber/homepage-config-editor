@@ -6,6 +6,10 @@ A comprehensive web-based GUI for creating, editing, and managing [Homepage](htt
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker)
 ![Live Updates](https://img.shields.io/badge/Live-Updates-green?style=for-the-badge)
 
+![Docker Hub](https://img.shields.io/docker/pulls/hoiber/homepage-config-editor?style=for-the-badge&logo=docker)
+![GitHub Container Registry](https://img.shields.io/badge/GHCR-Available-green?style=for-the-badge&logo=github)
+![Multi-Architecture](https://img.shields.io/badge/Multi--Arch-AMD64%20%7C%20ARM64%20%7C%20ARMv7-orange?style=for-the-badge)
+
 ![CleanShot 2025-08-07](CleanShot%202025-08-07.png)
 
 ## 🌟 Features
@@ -32,6 +36,8 @@ A comprehensive web-based GUI for creating, editing, and managing [Homepage](htt
 
 ### 🐳 **Docker Integration**
 - **Multi-profile Deployment**: Static, live, and full-stack options
+- **Pre-built Images**: Available on Docker Hub and GitHub Container Registry
+- **Multi-architecture Support**: AMD64, ARM64, ARM/v7 (Raspberry Pi)
 - **Homepage Integration**: Seamless container orchestration
 - **Production Ready**: Nginx-based static serving or Node.js live updates
 - **Volume Mounting**: Persistent configuration storage
@@ -52,7 +58,19 @@ docker-compose --profile full up -d --build
 - **Homepage Dashboard**: http://localhost:3000
 - **Shared Config**: `./config/` directory
 
-### Option 2: Standalone Config Editor
+### Option 2: Pre-built Docker Images
+```bash
+# Full server with live updates
+docker run -p 3001:3001 -v ./config:/config -e ENABLE_LIVE_UPDATES=true hoiber/homepage-config-editor:latest
+
+# Static Nginx build (read-only)
+docker run -p 8080:80 hoiber/homepage-config-editor:static
+
+# From GitHub Container Registry
+docker run -p 3001:3001 ghcr.io/hoiber/homepage-config-editor:latest
+```
+
+### Option 3: Standalone Config Editor
 ```bash
 # Live updates version
 docker-compose --profile live up -d --build
@@ -61,7 +79,7 @@ docker-compose --profile live up -d --build
 docker-compose --profile static up -d --build
 ```
 
-### Option 3: Manual Installation
+### Option 4: Manual Installation
 ```bash
 cd homepage-config-gui
 npm install
