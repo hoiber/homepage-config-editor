@@ -1,0 +1,62 @@
+name: Docker Multi-stage Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Free up space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: hoiber
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push with optimized Dockerfile
+      uses: docker/build-push-action@v5
+      with:
+        context: ./homepage-config-gui
+        push: true
+        platforms: linux/amd64
+        tags: |
+          hoiber/homepage-config-editor:latest
+          hoiber/homepage-config-editor:static
+        file-inline: |
+          FROM node:18-alpine AS builder
+          WORKDIR /app
+          
+          # Install dependencies with memory optimization
+          RUN apk add --no-cache python3 make g++
+          ENV NODE_OPTIONS="--max_old_space_size=1536"
+          
+          COPY package*.json ./
+          RUN npm config set fund false && \
+              npm config set audit false && \
+              npm config set maxsockets 1 && \
+              npm install --prefer-offline --no-audit && \
+              npm cache clean --force
+          
+          COPY . .
+          RUN NODE_OPTIONS="--max_old_space_size=1536" npm run build
+          
+          # Production stage
+          FROM nginx:alpine
+          COPY --from=builder /app/build /usr/share/nginx/html
+          COPY nginx.conf /etc/nginx/nginx.conf
+          EXPOSE 80
+          CMD ["nginx", "-g", "daemon off;"]
