@@ -383,6 +383,23 @@ const HomepageConfigGUI = () => {
       icon: 'openmediavault',
       widget: { type: 'openmediavault', url: 'http://localhost:80', key: '' }
     },
+    proxmox: {
+      name: 'Proxmox',
+      href: 'https://localhost:8006',
+      description: 'Virtualization platform',
+      icon: 'proxmox',
+      widget: null,
+      proxmoxNode: 'pve',
+      proxmoxVMID: 101,
+      proxmoxType: 'qemu'
+    },
+    proxmoxbackupserver: {
+      name: 'Proxmox Backup Server',
+      href: 'https://localhost:8007',
+      description: 'Backup solution',
+      icon: 'proxmox',
+      widget: { type: 'proxmoxbackupserver', url: 'https://localhost:8007', username: 'api_token_id', password: 'api_token_secret' }
+    },
     postgres: {
       name: 'PostgreSQL',
       href: 'http://localhost:5432',
@@ -1531,6 +1548,7 @@ const HomepageConfigGUI = () => {
             else if (key === 'key' || key === 'apikey' || key === 'api_key' || key === 'token') currentService.widget.key = value;
             else if (key === 'username' || key === 'user') currentService.widget.username = value;
             else if (key === 'password' || key === 'pass') currentService.widget.password = value;
+            else if (key === 'datastore') currentService.widget.datastore = value;
           } else if (currentContext === 'ping' && currentService.ping) {
             if (key === 'url' || key === 'host' || key === 'address') currentService.ping.url = value;
             else if (key === 'interval') currentService.ping.interval = typeof value === 'number' ? value : 30;
@@ -1541,6 +1559,9 @@ const HomepageConfigGUI = () => {
             if (key === 'href' || key === 'url') currentService.href = value;
             else if (key === 'description') currentService.description = value;
             else if (key === 'icon') currentService.icon = value;
+            else if (key === 'proxmoxNode') currentService.proxmoxNode = value;
+            else if (key === 'proxmoxVMID') currentService.proxmoxVMID = typeof value === 'number' ? value : parseInt(value) || 101;
+            else if (key === 'proxmoxType') currentService.proxmoxType = value;
           }
         }
       }
@@ -1793,6 +1814,11 @@ const HomepageConfigGUI = () => {
       if (service.description) serviceYaml += `${indent}    description: ${service.description}\n`;
       if (service.icon) serviceYaml += `${indent}    icon: ${service.icon}\n`;
       
+      // Add Proxmox configuration
+      if (service.proxmoxNode) serviceYaml += `${indent}    proxmoxNode: ${service.proxmoxNode}\n`;
+      if (service.proxmoxVMID) serviceYaml += `${indent}    proxmoxVMID: ${service.proxmoxVMID}\n`;
+      if (service.proxmoxType) serviceYaml += `${indent}    proxmoxType: ${service.proxmoxType}\n`;
+      
       // Add ping configuration
       if (service.ping && service.ping.enabled) {
         serviceYaml += `${indent}    ping:\n`;
@@ -1807,6 +1833,10 @@ const HomepageConfigGUI = () => {
         serviceYaml += `${indent}      type: ${service.widget.type}\n`;
         if (service.widget.url) serviceYaml += `${indent}      url: ${service.widget.url}\n`;
         if (service.widget.key) serviceYaml += `${indent}      key: ${service.widget.key}\n`;
+        // Proxmox Backup Server specific fields
+        if (service.widget.username) serviceYaml += `${indent}      username: ${service.widget.username}\n`;
+        if (service.widget.password) serviceYaml += `${indent}      password: ${service.widget.password}\n`;
+        if (service.widget.datastore) serviceYaml += `${indent}      datastore: ${service.widget.datastore}\n`;
       }
       
       return serviceYaml;
@@ -2052,7 +2082,7 @@ const HomepageConfigGUI = () => {
     'tubearchivist', 'calibre-web', 'photoprism', 'immich',
     
     // Storage & NAS
-    'truenas', 'freenas', 'openmediavault', 'diskstation', 'qnap', 'nextcloud',
+    'truenas', 'freenas', 'openmediavault', 'proxmox', 'proxmoxbackupserver', 'diskstation', 'qnap', 'nextcloud',
     'filebrowser', 'syncthing', 'duplicati', 'kopia', 'urbackup',
     
     // Development & Git
@@ -2516,6 +2546,91 @@ const HomepageConfigGUI = () => {
                           )}
                         </div>
 
+                        {/* Proxmox Configuration */}
+                        {service.name && commonServices[service.name.toLowerCase()] === commonServices.proxmox && (
+                          <div className="mt-4 pt-3 border-t border-slate-600">
+                            <label className="block text-slate-300 mb-2 text-sm font-medium">Proxmox Configuration</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs text-slate-400 mb-1">Node Name</label>
+                                <input
+                                  type="text"
+                                  value={service.proxmoxNode || 'pve'}
+                                  onChange={(e) => updateService(service.id, { proxmoxNode: e.target.value })}
+                                  placeholder="pve"
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-slate-400 mb-1">VM/Container ID</label>
+                                <input
+                                  type="number"
+                                  value={service.proxmoxVMID || 101}
+                                  onChange={(e) => updateService(service.id, { proxmoxVMID: parseInt(e.target.value) || 101 })}
+                                  placeholder="101"
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-slate-400 mb-1">Type</label>
+                                <select
+                                  value={service.proxmoxType || 'qemu'}
+                                  onChange={(e) => updateService(service.id, { proxmoxType: e.target.value })}
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                >
+                                  <option value="qemu">Virtual Machine (qemu)</option>
+                                  <option value="lxc">Container (lxc)</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Proxmox Backup Server Configuration */}
+                        {service.widget?.type === 'proxmoxbackupserver' && (
+                          <div className="mt-4 pt-3 border-t border-slate-600">
+                            <label className="block text-slate-300 mb-2 text-sm font-medium">Proxmox Backup Server Configuration</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs text-slate-400 mb-1">Username (API Token ID)</label>
+                                <input
+                                  type="text"
+                                  value={service.widget?.username || 'api_token_id'}
+                                  onChange={(e) => updateService(service.id, { 
+                                    widget: { ...service.widget, username: e.target.value }
+                                  })}
+                                  placeholder="user@pbs!tokenid"
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-slate-400 mb-1">Password (API Token Secret)</label>
+                                <input
+                                  type="password"
+                                  value={service.widget?.password || 'api_token_secret'}
+                                  onChange={(e) => updateService(service.id, { 
+                                    widget: { ...service.widget, password: e.target.value }
+                                  })}
+                                  placeholder="API Token Secret"
+                                  className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-2">
+                              <label className="block text-xs text-slate-400 mb-1">Datastore (Optional)</label>
+                              <input
+                                type="text"
+                                value={service.widget?.datastore || ''}
+                                onChange={(e) => updateService(service.id, { 
+                                  widget: { ...service.widget, datastore: e.target.value }
+                                })}
+                                placeholder="datastore_name (leave empty for combined usage)"
+                                className="w-full bg-slate-600 text-white px-2 py-1 rounded border border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all"
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         {/* Ping Configuration */}
                         <div className="mt-4 pt-3 border-t border-slate-600">
                           <label className="block text-slate-300 mb-2 text-sm font-medium">Ping Configuration (Optional)</label>
@@ -2777,6 +2892,91 @@ const HomepageConfigGUI = () => {
                                 </div>
                               )}
                             </div>
+
+                            {/* Proxmox Configuration */}
+                            {service.name && commonServices[service.name.toLowerCase()] === commonServices.proxmox && (
+                              <div className="mt-3 pt-2 border-t border-slate-500">
+                                <label className="block text-slate-300 mb-1 text-xs font-medium">Proxmox Configuration</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                  <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Node Name</label>
+                                    <input
+                                      type="text"
+                                      value={service.proxmoxNode || 'pve'}
+                                      onChange={(e) => updateService(service.id, { proxmoxNode: e.target.value })}
+                                      placeholder="pve"
+                                      className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-slate-400 mb-1">VM/Container ID</label>
+                                    <input
+                                      type="number"
+                                      value={service.proxmoxVMID || 101}
+                                      onChange={(e) => updateService(service.id, { proxmoxVMID: parseInt(e.target.value) || 101 })}
+                                      placeholder="101"
+                                      className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Type</label>
+                                    <select
+                                      value={service.proxmoxType || 'qemu'}
+                                      onChange={(e) => updateService(service.id, { proxmoxType: e.target.value })}
+                                      className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                    >
+                                      <option value="qemu">VM (qemu)</option>
+                                      <option value="lxc">Container (lxc)</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Proxmox Backup Server Configuration */}
+                            {service.widget?.type === 'proxmoxbackupserver' && (
+                              <div className="mt-3 pt-2 border-t border-slate-500">
+                                <label className="block text-slate-300 mb-1 text-xs font-medium">Proxmox Backup Server Configuration</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Username (API Token ID)</label>
+                                    <input
+                                      type="text"
+                                      value={service.widget?.username || 'api_token_id'}
+                                      onChange={(e) => updateService(service.id, { 
+                                        widget: { ...service.widget, username: e.target.value }
+                                      })}
+                                      placeholder="user@pbs!tokenid"
+                                      className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Password (API Token Secret)</label>
+                                    <input
+                                      type="password"
+                                      value={service.widget?.password || 'api_token_secret'}
+                                      onChange={(e) => updateService(service.id, { 
+                                        widget: { ...service.widget, password: e.target.value }
+                                      })}
+                                      placeholder="API Token Secret"
+                                      className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="mt-2">
+                                  <label className="block text-xs text-slate-400 mb-1">Datastore (Optional)</label>
+                                  <input
+                                    type="text"
+                                    value={service.widget?.datastore || ''}
+                                    onChange={(e) => updateService(service.id, { 
+                                      widget: { ...service.widget, datastore: e.target.value }
+                                    })}
+                                    placeholder="datastore_name (optional)"
+                                    className="w-full bg-slate-500 text-white px-2 py-1 rounded border border-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none transition-all text-xs"
+                                  />
+                                </div>
+                              </div>
+                            )}
 
                             {/* Ping Configuration */}
                             <div className="mt-3 pt-2 border-t border-slate-500">
