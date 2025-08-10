@@ -1,4 +1,4 @@
-name: Memory Safe Build
+name: Isolated Build (No Workspace)
 
 on:
   workflow_dispatch:
@@ -8,13 +8,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: homepage-config-gui
-        
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Copy homepage-config-gui to isolated directory
+      run: |
+        cp -r homepage-config-gui /tmp/isolated-build
+        cd /tmp/isolated-build
+        ls -la
 
     - name: Free up disk space
       run: |
@@ -22,31 +25,25 @@ jobs:
         sudo rm -rf /opt/ghc
         sudo rm -rf "/usr/local/share/boost"
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-        df -h
 
-    - name: Setup Node.js with smaller cache
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
 
-    - name: Configure npm for low memory
+    - name: Install and build in isolated directory
       run: |
-        npm config set fund false
-        npm config set audit false
-        npm config set maxsockets 1
-        npm config set fetch-retries 3
-        npm config set fetch-timeout 300000
-
-    - name: Install dependencies with memory limit
-      run: |
-        NODE_OPTIONS="--max_old_space_size=1536" npm install --prefer-offline
+        cd /tmp/isolated-build
+        # Now we're completely outside the workspace
+        NODE_OPTIONS="--max_old_space_size=1536" npm install --no-fund --no-audit --prefer-offline
         npm cache clean --force
+        NODE_OPTIONS="--max_old_space_size=1536" npm run build
+        ls -la build/
 
-    - name: Build with memory limit
-      run: NODE_OPTIONS="--max_old_space_size=1536" npm run build
-
-    - name: Verify build output
-      run: ls -la build/
+    - name: Copy build back to workspace
+      run: |
+        cp -r /tmp/isolated-build/build homepage-config-gui/
+        ls -la homepage-config-gui/build/
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
